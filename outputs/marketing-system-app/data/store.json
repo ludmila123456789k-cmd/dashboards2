@@ -1,0 +1,324 @@
+{
+  "publicToken": "13bdbb0b9a164aab345b",
+  "workspace": {
+    "title": "Система развития сайта и маркетинга",
+    "period": "2026",
+    "updatedAt": "2026-06-29T03:41:36.563Z",
+    "sections": {
+      "roadmap": {
+        "updatedAt": "2026-06-26T10:01:32.190Z",
+        "months": [
+          {
+            "id": "jan",
+            "month": "Январь",
+            "task": "аудит сайта",
+            "status": "done",
+            "owner": "Маркетинг"
+          },
+          {
+            "id": "feb",
+            "month": "Февраль",
+            "task": "обновление каталога",
+            "status": "done",
+            "owner": "Контент"
+          },
+          {
+            "id": "mar",
+            "month": "Март",
+            "task": "SEO",
+            "status": "done",
+            "owner": "SEO"
+          },
+          {
+            "id": "apr",
+            "month": "Апрель",
+            "task": "выставка",
+            "status": "done",
+            "owner": "PR"
+          },
+          {
+            "id": "may",
+            "month": "Май",
+            "task": "новый раздел сайта",
+            "status": "done",
+            "owner": "Сайт"
+          },
+          {
+            "id": "jun",
+            "month": "Июнь",
+            "task": "аналитика",
+            "status": "done",
+            "owner": "Аналитика"
+          }
+        ]
+      },
+      "content": {
+        "updatedAt": "2026-06-26T10:01:32.190Z",
+        "weeks": [
+          {
+            "id": "w1",
+            "title": "Неделя 1",
+            "items": [
+              {
+                "id": "c1",
+                "type": "статьи",
+                "title": "статья",
+                "status": "done"
+              },
+              {
+                "id": "c2",
+                "type": "новости",
+                "title": "новости",
+                "status": "done"
+              }
+            ]
+          },
+          {
+            "id": "w2",
+            "title": "Неделя 2",
+            "items": [
+              {
+                "id": "c3",
+                "type": "кейсы",
+                "title": "кейс клиента",
+                "status": "done"
+              }
+            ]
+          },
+          {
+            "id": "w3",
+            "title": "Неделя 3",
+            "items": [
+              {
+                "id": "c4",
+                "type": "соцсети",
+                "title": "видео производства",
+                "status": "done"
+              }
+            ]
+          },
+          {
+            "id": "w4",
+            "title": "Неделя 4",
+            "items": [
+              {
+                "id": "c5",
+                "type": "статьи",
+                "title": "интервью инженера",
+                "status": "done"
+              }
+            ]
+          }
+        ]
+      },
+      "board": {
+        "updatedAt": "2026-06-26T10:01:32.190Z",
+        "stages": [
+          "Идеи",
+          "В работе",
+          "На согласовании",
+          "Разработка",
+          "Тестирование",
+          "Готово"
+        ],
+        "projects": [
+          {
+            "id": "p1",
+            "title": "Новый поиск",
+            "owner": "Сайт",
+            "stage": "Разработка",
+            "due": "2026-07-12"
+          },
+          {
+            "id": "p2",
+            "title": "Новый каталог",
+            "owner": "Контент",
+            "stage": "Идеи",
+            "due": "2026-08-01"
+          },
+          {
+            "id": "p3",
+            "title": "Новый фильтр",
+            "owner": "Разработка",
+            "stage": "Готово",
+            "due": "2026-06-20"
+          },
+          {
+            "id": "p4",
+            "title": "FAQ",
+            "owner": "Маркетинг",
+            "stage": "Идеи",
+            "due": "2026-07-03"
+          }
+        ]
+      },
+      "improvements": {
+        "updatedAt": "2026-06-29T03:41:04.154Z",
+        "items": [
+          {
+            "id": 12,
+            "idea": "Добавить калькулятор",
+            "priority": "высокий",
+            "status": "Планируется",
+            "cost": "40 тыс",
+            "effect": "Увеличение заявок",
+            "rating": 5
+          },
+          {
+            "id": 13,
+            "idea": "Новый поиск",
+            "priority": "высокий",
+            "status": "разработка",
+            "cost": "60 тыс",
+            "effect": "Быстрее находят товар",
+            "rating": 5
+          },
+          {
+            "id": 14,
+            "idea": "Новый каталог",
+            "priority": "средний",
+            "status": "план",
+            "cost": "80 тыс",
+            "effect": "Лучше структура ассортимента",
+            "rating": 4
+          },
+          {
+            "id": 15,
+            "idea": "Новый фильтр",
+            "priority": "высокий",
+            "status": "готово",
+            "cost": "35 тыс",
+            "effect": "Больше переходов в карточки",
+            "rating": 5
+          },
+          {
+            "id": 16,
+            "idea": "Новая идея",
+            "priority": "средний",
+            "status": "идея",
+            "cost": "",
+            "effect": "",
+            "rating": 3
+          }
+        ]
+      },
+      "journey": {
+        "updatedAt": "2026-06-26T10:01:32.190Z",
+        "steps": [
+          {
+            "id": "google",
+            "title": "Google",
+            "loss": false,
+            "note": ""
+          },
+          {
+            "id": "site",
+            "title": "Сайт",
+            "loss": false,
+            "note": ""
+          },
+          {
+            "id": "catalog",
+            "title": "Каталог",
+            "loss": true,
+            "note": "Теряются при подборе товара"
+          },
+          {
+            "id": "request",
+            "title": "Заявка",
+            "loss": true,
+            "note": "Часть не завершает форму"
+          },
+          {
+            "id": "manager",
+            "title": "Менеджер",
+            "loss": false,
+            "note": ""
+          },
+          {
+            "id": "offer",
+            "title": "КП",
+            "loss": true,
+            "note": "Долгое согласование"
+          },
+          {
+            "id": "contract",
+            "title": "Договор",
+            "loss": false,
+            "note": ""
+          },
+          {
+            "id": "delivery",
+            "title": "Поставка",
+            "loss": false,
+            "note": ""
+          },
+          {
+            "id": "repeat",
+            "title": "Повторная покупка",
+            "loss": false,
+            "note": ""
+          }
+        ]
+      },
+      "employees": {
+        "updatedAt": "2026-06-26T10:01:32.190Z",
+        "month": "2026-06",
+        "people": [
+          {
+            "id": "ivanov",
+            "name": "Иванов",
+            "plan": 8,
+            "done": 7,
+            "reports": [
+              {
+                "id": "r1",
+                "date": "2026-06-07",
+                "title": "SEO и структура",
+                "text": "Проверил посадочные страницы, подготовил список правок по каталогу.",
+                "completed": true
+              },
+              {
+                "id": "r2",
+                "date": "2026-06-21",
+                "title": "Контент",
+                "text": "Собрал темы для статей и вопросы для интервью инженера.",
+                "completed": true
+              }
+            ]
+          },
+          {
+            "id": "petrova",
+            "name": "Петрова",
+            "plan": 6,
+            "done": 6,
+            "reports": [
+              {
+                "id": "r3",
+                "date": "2026-06-14",
+                "title": "Выставка",
+                "text": "Подготовила материалы, обновила презентацию и список лидов.",
+                "completed": true
+              }
+            ]
+          },
+          {
+            "id": "smirnov",
+            "name": "Смирнов",
+            "plan": 5,
+            "done": 3,
+            "reports": [
+              {
+                "id": "r4",
+                "date": "2026-06-18",
+                "title": "Разработка",
+                "text": "Оценил калькулятор и новый фильтр, передал сроки.",
+                "completed": false
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

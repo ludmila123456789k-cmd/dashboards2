@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: dashboard-studio
+    runtime: node
+    plan: free
+    rootDir: outputs/dashboard-app
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: EDITOR_PASSWORD
+        sync: false
+      - key: AUTH_SECRET
+        generateValue: true
+
+  - type: web
+    name: marketing-system
+    runtime: node
+    plan: free
+    rootDir: outputs/marketing-system-app
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: EDITOR_PASSWORD
+        sync: false
+      - key: AUTH_SECRET
+        generateValue: true

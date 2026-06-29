@@ -1,0 +1,599 @@
+{
+  "publicToken": "a054198df5bf80fd4944",
+  "dashboard": {
+    "title": "Дашборд компании",
+    "period": "Июнь 2026",
+    "updatedAt": "2026-06-29T04:27:02.354Z",
+    "sections": {
+      "site": {
+        "updatedAt": "2026-06-26T11:58:29.474Z",
+        "metrics": [
+          {
+            "id": "visitors",
+            "label": "Посетители",
+            "value": 18420,
+            "plan": 18000,
+            "suffix": ""
+          },
+          {
+            "id": "pageViews",
+            "label": "Просмотры страниц",
+            "value": 51200,
+            "plan": 48000,
+            "suffix": ""
+          },
+          {
+            "id": "topSources",
+            "label": "Источники трафика",
+            "value": 5,
+            "plan": 5,
+            "suffix": ""
+          },
+          {
+            "id": "topPages",
+            "label": "Популярные страницы",
+            "value": 5,
+            "plan": 6,
+            "suffix": ""
+          },
+          {
+            "id": "conversion",
+            "label": "Конверсия в заявку",
+            "value": 3.1,
+            "plan": 2.8,
+            "suffix": "%"
+          }
+        ],
+        "rows": [
+          {
+            "date": "2026-06-01",
+            "source": "Поиск",
+            "page": "/services",
+            "visitors": 3200,
+            "pageviews": 9100,
+            "leads": 106
+          },
+          {
+            "date": "2026-06-08",
+            "source": "Реклама",
+            "page": "/cases",
+            "visitors": 4100,
+            "pageviews": 11800,
+            "leads": 142
+          },
+          {
+            "date": "2026-06-15",
+            "source": "Прямые",
+            "page": "/contacts",
+            "visitors": 2950,
+            "pageviews": 8200,
+            "leads": 91
+          },
+          {
+            "date": "2026-06-22",
+            "source": "Соцсети",
+            "page": "/blog",
+            "visitors": 3700,
+            "pageviews": 10100,
+            "leads": 96
+          },
+          {
+            "date": "2026-06-26",
+            "source": "Email",
+            "page": "/pricing",
+            "visitors": 4470,
+            "pageviews": 12000,
+            "leads": 135
+          }
+        ],
+        "analysis": {
+          "trend": [
+            {
+              "label": "2026-06-01",
+              "visitors": 3200
+            },
+            {
+              "label": "2026-06-08",
+              "visitors": 4100
+            },
+            {
+              "label": "2026-06-15",
+              "visitors": 2950
+            },
+            {
+              "label": "2026-06-22",
+              "visitors": 3700
+            },
+            {
+              "label": "2026-06-26",
+              "visitors": 4470
+            }
+          ],
+          "sources": [
+            {
+              "label": "Email",
+              "value": 4470
+            },
+            {
+              "label": "Реклама",
+              "value": 4100
+            },
+            {
+              "label": "Соцсети",
+              "value": 3700
+            },
+            {
+              "label": "Поиск",
+              "value": 3200
+            },
+            {
+              "label": "Прямые",
+              "value": 2950
+            }
+          ],
+          "pages": [
+            {
+              "label": "/pricing",
+              "value": 12000
+            },
+            {
+              "label": "/cases",
+              "value": 11800
+            },
+            {
+              "label": "/blog",
+              "value": 10100
+            },
+            {
+              "label": "/services",
+              "value": 9100
+            },
+            {
+              "label": "/contacts",
+              "value": 8200
+            }
+          ]
+        }
+      },
+      "marketing": {
+        "updatedAt": "2026-06-26T11:58:29.474Z",
+        "metrics": [
+          {
+            "id": "exhibitions",
+            "label": "Выставки",
+            "value": 2,
+            "plan": 2,
+            "suffix": ""
+          },
+          {
+            "id": "campaigns",
+            "label": "Рекламные кампании",
+            "value": 4,
+            "plan": 6,
+            "suffix": ""
+          },
+          {
+            "id": "articles",
+            "label": "Выпущенные статьи",
+            "value": 2,
+            "plan": 4,
+            "suffix": ""
+          },
+          {
+            "id": "cases",
+            "label": "Кейсы",
+            "value": 1,
+            "plan": 2,
+            "suffix": ""
+          },
+          {
+            "id": "news",
+            "label": "Новости",
+            "value": 5,
+            "plan": 8,
+            "suffix": ""
+          }
+        ],
+        "rows": [
+          {
+            "date": "2026-06-01",
+            "type": "Статья",
+            "count": 2
+          },
+          {
+            "date": "2026-06-08",
+            "type": "Кейс",
+            "count": 1
+          },
+          {
+            "date": "2026-06-15",
+            "type": "Кампания",
+            "count": 4
+          },
+          {
+            "date": "2026-06-22",
+            "type": "Новость",
+            "count": 5
+          },
+          {
+            "date": "2026-06-26",
+            "type": "Выставка",
+            "count": 2
+          }
+        ],
+        "analysis": {
+          "types": [
+            {
+              "label": "Новость",
+              "value": 5
+            },
+            {
+              "label": "Кампания",
+              "value": 4
+            },
+            {
+              "label": "Статья",
+              "value": 2
+            },
+            {
+              "label": "Выставка",
+              "value": 2
+            },
+            {
+              "label": "Кейс",
+              "value": 1
+            }
+          ]
+        }
+      },
+      "roadmap": {
+        "updatedAt": "2026-06-29T04:17:02.640Z",
+        "months": [
+          {
+            "id": "jan",
+            "month": "Январь",
+            "task": "аудит сайта",
+            "status": "done",
+            "owner": "Маркетинг"
+          },
+          {
+            "id": "feb",
+            "month": "Февраль",
+            "task": "обновление каталога",
+            "status": "done",
+            "owner": "Контент"
+          },
+          {
+            "id": "mar",
+            "month": "Март",
+            "task": "SEO",
+            "status": "done",
+            "owner": "SEO"
+          },
+          {
+            "id": "apr",
+            "month": "Апрель",
+            "task": "выставка",
+            "status": "done",
+            "owner": "PR"
+          },
+          {
+            "id": "may",
+            "month": "Май",
+            "task": "новый раздел сайта",
+            "status": "done",
+            "owner": "Сайт"
+          },
+          {
+            "id": "jun",
+            "month": "Июнь",
+            "task": "аналитика",
+            "status": "done",
+            "owner": "Аналитика"
+          }
+        ]
+      },
+      "content": {
+        "updatedAt": "2026-06-29T04:17:02.640Z",
+        "weeks": [
+          {
+            "id": "w1",
+            "title": "Неделя 1",
+            "items": [
+              {
+                "id": "c1",
+                "type": "статьи",
+                "title": "статья",
+                "status": "done"
+              },
+              {
+                "id": "c2",
+                "type": "новости",
+                "title": "новости",
+                "status": "done"
+              }
+            ]
+          },
+          {
+            "id": "w2",
+            "title": "Неделя 2",
+            "items": [
+              {
+                "id": "c3",
+                "type": "кейсы",
+                "title": "кейс клиента",
+                "status": "done"
+              }
+            ]
+          },
+          {
+            "id": "w3",
+            "title": "Неделя 3",
+            "items": [
+              {
+                "id": "c4",
+                "type": "соцсети",
+                "title": "видео производства",
+                "status": "done"
+              }
+            ]
+          },
+          {
+            "id": "w4",
+            "title": "Неделя 4",
+            "items": [
+              {
+                "id": "c5",
+                "type": "статьи",
+                "title": "интервью инженера",
+                "status": "done"
+              }
+            ]
+          }
+        ]
+      },
+      "board": {
+        "updatedAt": "2026-06-29T04:19:07.029Z",
+        "stages": [
+          "Идеи",
+          "В работе",
+          "На согласовании",
+          "Разработка",
+          "Тестирование",
+          "Готово"
+        ],
+        "projects": [
+          {
+            "id": "p1",
+            "title": "Новый поиск",
+            "owner": "Сайт",
+            "stage": "Разработка",
+            "due": "2026-07-12"
+          },
+          {
+            "id": "p2",
+            "title": "Новый каталог",
+            "owner": "Контент",
+            "stage": "Разработка",
+            "due": "2026-08-01"
+          },
+          {
+            "id": "p3",
+            "title": "Новый фильтр",
+            "owner": "Разработка",
+            "stage": "Готово",
+            "due": "2026-06-20"
+          },
+          {
+            "id": "p4",
+            "title": "FAQ",
+            "owner": "Маркетинг",
+            "stage": "На согласовании",
+            "due": "2026-07-03"
+          },
+          {
+            "id": "p-c797d70c9d4768-19f1199cc30",
+            "title": "Новый проект",
+            "owner": "Ответственный",
+            "stage": "Тестирование",
+            "due": ""
+          },
+          {
+            "id": "p-687a7ed44a2548-19f1199cc56",
+            "title": "Новый проект",
+            "owner": "Ответственный",
+            "stage": "Идеи",
+            "due": ""
+          }
+        ]
+      },
+      "improvements": {
+        "updatedAt": "2026-06-29T04:17:02.640Z",
+        "items": [
+          {
+            "id": 12,
+            "idea": "Добавить калькулятор",
+            "priority": "высокий",
+            "status": "планируется",
+            "cost": "40 тыс",
+            "effect": "Увеличение заявок",
+            "rating": 5
+          },
+          {
+            "id": 13,
+            "idea": "Новый поиск",
+            "priority": "высокий",
+            "status": "разработка",
+            "cost": "60 тыс",
+            "effect": "Быстрее находят товар",
+            "rating": 5
+          },
+          {
+            "id": 14,
+            "idea": "Новый каталог",
+            "priority": "средний",
+            "status": "план",
+            "cost": "80 тыс",
+            "effect": "Лучше структура ассортимента",
+            "rating": 4
+          },
+          {
+            "id": 15,
+            "idea": "Новый фильтр",
+            "priority": "высокий",
+            "status": "готово",
+            "cost": "35 тыс",
+            "effect": "Больше переходов в карточки",
+            "rating": 5
+          },
+          {
+            "id": 16,
+            "idea": "FAQ",
+            "priority": "низкий",
+            "status": "идея",
+            "cost": "15 тыс",
+            "effect": "Меньше повторных вопросов",
+            "rating": 3
+          }
+        ]
+      },
+      "journey": {
+        "updatedAt": "2026-06-29T04:17:02.640Z",
+        "steps": [
+          {
+            "id": "google",
+            "title": "Google",
+            "loss": false,
+            "note": ""
+          },
+          {
+            "id": "site",
+            "title": "Сайт",
+            "loss": false,
+            "note": ""
+          },
+          {
+            "id": "catalog",
+            "title": "Каталог",
+            "loss": true,
+            "note": "Теряются при подборе товара"
+          },
+          {
+            "id": "request",
+            "title": "Заявка",
+            "loss": true,
+            "note": "Часть не завершает форму"
+          },
+          {
+            "id": "manager",
+            "title": "Менеджер",
+            "loss": false,
+            "note": ""
+          },
+          {
+            "id": "offer",
+            "title": "КП",
+            "loss": true,
+            "note": "Долгое согласование"
+          },
+          {
+            "id": "contract",
+            "title": "Договор",
+            "loss": false,
+            "note": ""
+          },
+          {
+            "id": "delivery",
+            "title": "Поставка",
+            "loss": false,
+            "note": ""
+          },
+          {
+            "id": "repeat",
+            "title": "Повторная покупка",
+            "loss": false,
+            "note": ""
+          }
+        ]
+      },
+      "employees": {
+        "updatedAt": "2026-06-29T04:27:01.985Z",
+        "month": "2026-06",
+        "people": [
+          {
+            "id": "ivanov",
+            "name": "Иванов",
+            "plan": 8,
+            "done": 7,
+            "reports": [
+              {
+                "id": "r1",
+                "date": "2026-06-07",
+                "title": "SEO и структура",
+                "text": "Проверил посадочные страницы, подготовил список правок по каталогу.",
+                "completed": true
+              },
+              {
+                "id": "r2",
+                "date": "2026-06-21",
+                "title": "Контент",
+                "text": "Собрал темы для статей и вопросы для интервью инженера.",
+                "completed": true
+              },
+              {
+                "id": "r-7738d3c68e1208-19f11a04859",
+                "date": "2026-06-01",
+                "title": "Новый отчет",
+                "text": "",
+                "completed": false
+              }
+            ]
+          },
+          {
+            "id": "e-7b6e31c158f1b-19f11a175e1",
+            "name": "Новый сотрудник",
+            "plan": 0,
+            "done": 0,
+            "reports": []
+          }
+        ]
+      },
+      "executive": {
+        "updatedAt": "2026-06-26T11:58:29.474Z",
+        "kpis": [
+          {
+            "id": "requests",
+            "label": "Заявки",
+            "plan": 200,
+            "fact": 570
+          },
+          {
+            "id": "newClients",
+            "label": "Новые клиенты",
+            "plan": 35,
+            "fact": 39
+          },
+          {
+            "id": "siteConversion",
+            "label": "Конверсия сайта",
+            "plan": 2.8,
+            "fact": 3.1,
+            "suffix": "%"
+          },
+          {
+            "id": "newArticles",
+            "label": "Новые статьи",
+            "plan": 4,
+            "fact": 2
+          },
+          {
+            "id": "cases",
+            "label": "Кейсы",
+            "plan": 2,
+            "fact": 1
+          }
+        ]
+      }
+    }
+  }
+}
