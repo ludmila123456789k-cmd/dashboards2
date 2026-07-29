@@ -1,0 +1,12 @@
+{
+  "name": "konglomerat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Konglomerat dashboard for roadmap, content calendar, projects and employee reports.",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
