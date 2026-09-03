@@ -3,7 +3,7 @@ services:
     name: konglomerat-x9uh
     runtime: node
     plan: starter
-    buildCommand: mkdir -p public && cp index.html public/index.html && cp app.js public/app.js && cp styles.css public/styles.css && cp favicon.svg public/favicon.svg && npm install
+    buildCommand: mkdir -p public && cp index.html public/index.html && cp app.js public/app.js && cp styles.css public/styles.css && cp favicon.svg public/favicon.svg && cp outputs/marketing-system-app/public/report-hotfix.js public/report-hotfix.js && npm install
     startCommand: npm start
     healthCheckPath: /api/health
     disk:
