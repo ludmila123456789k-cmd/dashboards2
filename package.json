@@ -4,7 +4,7 @@
   "private": true,
   "description": "Marketing roadmap, content calendar, project board and executive view.",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server-hotfix.js"
   },
   "engines": {
     "node": ">=18"
