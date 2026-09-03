@@ -1,39 +1,56 @@
 (() => {
-  const VERSION = "20260903-04";
+  const VERSION = "20260903-05";
   const USAGE_KEY = "konglomerat-report-symbols";
+  const TWEMOJI_SRC = "https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js";
   let lastSelection = null;
 
   const symbolGroups = [
     { title: "Статусы и проверка", symbols: ["✅", "☑️", "✔️", "❌", "✖️", "⛔", "⚠️", "ℹ️", "🟢", "🟡", "🔴", "🔵", "🟣", "⚪", "⚫", "⏳", "⌛", "🕐", "🧭", "📍", "🔔"] },
-    { title: "Приоритеты и акценты", symbols: ["⭐", "🌟", "✨", "🔥", "🚨", "📌", "🎯", "💎", "🏆", "🥇", "🥈", "🥉", "💯", "🔝", "🧨", "💡", "❗", "❓"] },
-    { title: "Задачи и документы", symbols: ["📝", "📄", "📃", "📑", "📋", "🧾", "🗒️", "📚", "🔖", "📎", "📂", "📁", "🗂️", "🗃️", "🗄️", "📦", "🧷", "✂️"] },
+    { title: "Приоритеты и акценты", symbols: ["⭐", "🌟", "✨", "🔥", "🚨", "📌", "🎯", "💎", "🏆", "🥇", "🥈", "🥉", "💯", "🔝", "💡", "❗", "❓"] },
+    { title: "Задачи и документы", symbols: ["📝", "📄", "📃", "📑", "📋", "🧾", "🗒️", "📚", "🔖", "📎", "📂", "📁", "🗂️", "🗃️", "📦", "🧷", "✂️"] },
     { title: "Работа и процессы", symbols: ["📊", "📈", "📉", "🧮", "🗓️", "📅", "⏰", "⏱️", "⌚", "🔎", "🧩", "⚙️", "🛠️", "🔧", "🧪", "🔒", "🔓", "🧰"] },
-    { title: "Команда и согласование", symbols: ["👍", "👎", "👌", "🤝", "🙌", "👏", "💪", "🙏", "💬", "🗣️", "📣", "📢", "✉️", "☎️", "📞", "🧑‍💻", "👥", "🧑‍🏫"] },
-    { title: "Маркетинг и продажи", symbols: ["🎯", "🚀", "📈", "📊", "🛒", "🏷️", "💰", "💵", "💳", "🧲", "💡", "🔍", "📷", "🎬", "📰", "📩", "📨", "🪧", "🎁", "🏁"] },
-    { title: "Сайт и техника", symbols: ["💻", "🖥️", "📱", "🌐", "🔗", "⚡", "🔌", "🔋", "⌨️", "🖱️", "📡", "🛰️", "🧱", "🧬", "🧰", "🛡️", "🔐", "🧲", "🖨️", "📟"] },
-    { title: "Контент и дизайн", symbols: ["🎨", "🖌️", "🖼️", "✏️", "📝", "📸", "🎥", "🎞️", "🎙️", "🔠", "🔤", "🧠", "💡", "🪄", "🧵", "📐", "📏", "🖊️", "🖋️", "🖍️"] },
-    { title: "Файлы и медиа", symbols: ["📎", "📁", "📂", "🗃️", "🗄️", "🖼️", "📷", "🎥", "🎬", "🎧", "📄", "📑", "📦", "⬇️", "⬆️", "🔗", "💾", "🗜️"] },
+    { title: "Команда и согласование", symbols: ["👍", "👎", "👌", "🤝", "🙌", "👏", "💪", "🙏", "💬", "🗣️", "📣", "📢", "✉️", "☎️", "📞", "👥"] },
+    { title: "Маркетинг и продажи", symbols: ["🎯", "🚀", "📈", "📊", "🛒", "🏷️", "💰", "💵", "💳", "🧲", "💡", "🔍", "📷", "🎬", "📰", "📩", "📨", "🎁", "🏁"] },
+    { title: "Сайт и техника", symbols: ["💻", "🖥️", "📱", "🌐", "🔗", "⚡", "🔌", "🔋", "⌨️", "🖱️", "📡", "🧱", "🧰", "🛡️", "🔐", "🖨️"] },
+    { title: "Контент и дизайн", symbols: ["🎨", "🖌️", "🖼️", "✏️", "📝", "📸", "🎥", "🎞️", "🎙️", "🔠", "🔤", "🧠", "💡", "🪄", "📐", "📏", "🖊️", "🖋️", "🖍️"] },
+    { title: "Файлы и медиа", symbols: ["📎", "📁", "📂", "🗃️", "🖼️", "📷", "🎥", "🎬", "🎧", "📄", "📑", "📦", "⬇️", "⬆️", "🔗", "💾"] },
     { title: "Пункты и списки", symbols: ["🔹", "🔸", "◾", "◽", "▪️", "▫️", "🟦", "🟩", "🟨", "🟥", "🟪", "🟧", "🔘", "⭕", "✅", "☑️", "➖", "➕"] },
     { title: "Стрелки и навигация", symbols: ["➡️", "⬅️", "⬆️", "⬇️", "↗️", "↘️", "↙️", "↖️", "↔️", "↕️", "🔜", "🔙", "🔝", "🔚", "⏩", "⏪", "🔁", "🔄"] },
     { title: "Цифры и этапы", symbols: ["0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟", "🔢", "#️⃣", "*️⃣", "💯"] },
-    { title: "Настроение", symbols: ["🙂", "😀", "😎", "🤩", "😍", "🥳", "😊", "😌", "😐", "😕", "🤔", "😅", "❤️", "💚", "💙", "💜", "🧡", "💛"] },
-    { title: "Разное", symbols: ["❗", "❓", "№", "%", "➕", "➖", "✖️", "➗", "♾️", "⚖️", "©️", "®️", "™️", "§️", "♻️", "✅", "≈", "≠", "≤", "≥"] }
+    { title: "Настроение", symbols: ["🙂", "😀", "😎", "🤩", "😍", "🥳", "😊", "😌", "😐", "🤔", "😅", "❤️", "💚", "💙", "💜", "🧡", "💛"] },
+    { title: "Разное", symbols: ["❗", "❓", "№", "%", "➕", "➖", "✖️", "➗", "♾️", "⚖️", "©️", "®️", "™️", "§️", "♻️", "≈", "≠", "≤", "≥"] }
   ];
 
-  const aliases = new Map([
-    ["✓", "✅"], ["✔", "✅"], ["✔️", "✅"], ["☑", "☑️"], ["✕", "❌"], ["✖", "❌"], ["✖️", "❌"],
-    ["•", "🔹"], ["◦", "🔸"], ["★", "⭐"], ["☆", "🌟"], ["→", "➡️"], ["←", "⬅️"], ["↑", "⬆️"], ["↓", "⬇️"]
-  ]);
+  const aliases = new Map([["✓", "✅"], ["✔", "✅"], ["✔️", "✅"], ["☑", "☑️"], ["✕", "❌"], ["✖", "❌"], ["✖️", "❌"], ["•", "🔹"], ["◦", "🔸"], ["★", "⭐"], ["☆", "🌟"], ["→", "➡️"], ["←", "⬅️"], ["↑", "⬆️"], ["↓", "⬇️"]]);
 
   function start() {
     injectStyles();
-    rebuildSymbols();
+    loadTwemoji().then(() => {
+      rebuildSymbols();
+      renderEmojiImages();
+    });
     bindOnce();
-    new MutationObserver(rebuildSymbols).observe(document.documentElement, { childList: true, subtree: true });
+    new MutationObserver(() => {
+      rebuildSymbols();
+      renderEmojiImages();
+    }).observe(document.documentElement, { childList: true, subtree: true });
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once: true });
   else start();
+
+  function loadTwemoji() {
+    if (window.twemoji) return Promise.resolve();
+    if (document.querySelector(`script[src="${TWEMOJI_SRC}"]`)) return new Promise(resolve => setTimeout(resolve, 500));
+    return new Promise(resolve => {
+      const script = document.createElement("script");
+      script.src = TWEMOJI_SRC;
+      script.async = true;
+      script.onload = resolve;
+      script.onerror = resolve;
+      document.head.appendChild(script);
+    });
+  }
 
   function injectStyles() {
     if (document.getElementById("report-symbols-hotfix-style")) return;
@@ -42,6 +59,8 @@
     style.textContent = `
       :root { --emoji-font: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", emoji, sans-serif; }
       .symbol-button { font-family: var(--emoji-font); font-size: 18px; min-width: 38px; min-height: 34px; line-height: 1; background: linear-gradient(180deg,#fff,#f8fafc); box-shadow: inset 0 1px 0 rgba(255,255,255,.95),0 2px 6px rgba(15,23,42,.08); }
+      .emoji-img { width: 1.15em; height: 1.15em; margin: 0 .08em; vertical-align: -0.18em; display: inline-block; }
+      .symbol-button .emoji-img { width: 22px; height: 22px; margin: 0; vertical-align: middle; }
       .report-description,.report-title,.report-textarea,.report-modal-textarea { font-family: inherit, var(--emoji-font); }
       .symbol-panel .report-tool-section { margin-bottom: 12px; }
       .symbol-panel .report-tool-title { color: #64748b; font-size: 12px; font-weight: 700; margin: 8px 0 6px; }
@@ -74,10 +93,8 @@
     if (!panel || panel.dataset.symbolsHotfix === VERSION) return;
     panel.dataset.symbolsHotfix = VERSION;
     const recent = readRecentSymbols();
-    panel.innerHTML = [
-      recent.length ? renderGroup("Часто используемые", recent) : "",
-      ...symbolGroups.map(group => renderGroup(group.title, group.symbols))
-    ].join("");
+    panel.innerHTML = [recent.length ? renderGroup("Часто используемые", recent) : "", ...symbolGroups.map(group => renderGroup(group.title, group.symbols))].join("");
+    parseTwemoji(panel);
   }
 
   function renderGroup(title, symbols) {
@@ -87,6 +104,20 @@
   function renderButton(symbol) {
     const value = emoji(symbol);
     return `<button class="symbol-button" type="button" data-action="insert-report-symbol" data-symbol="${escapeAttr(value)}" title="Вставить ${escapeAttr(value)}">${escapeHtml(value)}</button>`;
+  }
+
+  function renderEmojiImages() {
+    document.querySelectorAll(".report-title, .report-description, .task-card, .employee-task-card, .report-card, .task-list, .markdown-preview").forEach(element => parseTwemoji(element));
+  }
+
+  function parseTwemoji(element) {
+    if (!window.twemoji || !element || element.closest("textarea,input")) return;
+    window.twemoji.parse(element, {
+      base: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/",
+      folder: "svg",
+      ext: ".svg",
+      className: "emoji-img"
+    });
   }
 
   function insertSymbol(symbol) {
@@ -121,11 +152,8 @@
   }
 
   function readRecentSymbols() {
-    try {
-      return [...new Set(JSON.parse(localStorage.getItem(USAGE_KEY) || "[]").map(emoji).filter(Boolean))].slice(0, 12);
-    } catch (error) {
-      return [];
-    }
+    try { return [...new Set(JSON.parse(localStorage.getItem(USAGE_KEY) || "[]").map(emoji).filter(Boolean))].slice(0, 12); }
+    catch (error) { return []; }
   }
 
   function rememberRecent(symbol) {
