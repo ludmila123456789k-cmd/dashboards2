@@ -2773,3 +2773,12 @@ tr:last-child td {
 .employee-birthday-wrap strong{display:inline-block!important;padding:9px 14px!important;border-radius:999px!important;background:#fff!important;color:#9d174d!important;font-size:18px!important;box-shadow:0 8px 24px #0f172a14!important;visibility:visible!important;opacity:1!important}
 @keyframes employee-fall-visible{0%{transform:translate3d(0,-44px,0) rotate(var(--r,0deg)) scale(var(--s,1));opacity:0}8%{opacity:1}50%{transform:translate3d(calc(var(--dx,30px)*.45),220px,0) rotate(calc(var(--r,0deg) + 210deg)) scale(var(--s,1));opacity:1}100%{transform:translate3d(var(--dx,30px),500px,0) rotate(calc(var(--r,0deg) + 520deg)) scale(var(--s,1));opacity:.95}}
 @media(max-width:1200px){.employee-detail-with-event{grid-template-columns:minmax(0,1fr) minmax(340px,360px)!important}.employee-event{min-height:410px!important}}
+/* Clean event background: no dashed frame, no blue highlight */
+.employee-event{background:transparent!important;border-left:1px solid #e5e7eb!important}
+.employee-event:before{display:none!important;content:none!important}
+.employee-lottie{position:absolute!important;inset:0!important;display:flex!important;align-items:center!important;justify-content:center!important;background:transparent!important}
+.employee-lottie svg{max-width:100%!important;max-height:100%!important;background:transparent!important}
+.employee-event-picture{position:absolute!important;inset:24px!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:12px!important;background:transparent!important;text-align:center!important}
+.employee-event-picture img{display:block!important;max-width:min(330px,100%)!important;max-height:310px!important;width:auto!important;height:auto!important;object-fit:contain!important;border-radius:10px!important;box-shadow:0 12px 32px #0f172a22!important;background:transparent!important}
+.employee-event-picture strong{display:inline-block!important;padding:8px 12px!important;border-radius:999px!important;background:#fff!important;color:#9d174d!important;font-size:17px!important;box-shadow:0 8px 22px #0f172a14!important}
+.employee-lottie-fallback{font-weight:800;color:#64748b;background:#fff;border-radius:999px;padding:10px 14px;box-shadow:0 8px 22px #0f172a14}
