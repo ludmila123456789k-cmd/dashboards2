@@ -14,10 +14,10 @@ function decodeProject2Html() {
   const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
   const html = new TextDecoder('utf-8').decode(bytes);
   const fix = `<style>
-  html,body{margin:0!important;padding:0!important;width:100%!important;min-height:100%!important;overflow:hidden!important;background:#f6f8fb!important}
+  html,body{margin:0!important;padding:0!important;width:100%!important;min-height:100%!important;overflow:auto!important;background:#f6f8fb!important}
   .app{display:block!important;min-height:100vh!important;width:100%!important;background:#f6f8fb!important}
   .app>.sidebar{display:none!important}
-  .content{padding:14px 18px 22px!important;margin:0!important;max-width:none!important;width:100%!important;box-sizing:border-box!important;overflow:hidden!important}
+  .content{padding:14px 18px 42px!important;margin:0!important;max-width:none!important;width:100%!important;box-sizing:border-box!important;overflow:visible!important}
   .head{margin:0 0 14px!important;padding:0!important;align-items:flex-start!important}
   .head>div>.muted:first-child{display:none!important}
   .head h1{margin-top:0!important;font-size:28px!important;line-height:1.08!important}
@@ -442,15 +442,15 @@ function upgradeCalendarData(target) {
     }
     report.completed = report.status === "done";
   });
-  const firstReportInMonth = employeeReports
-    .map(report => report.date)
-    .filter(date => validDateValue(date) && monthFromDate(date) === employees.month)
-    .sort()[0];
-  if (!validDateValue(employees.day) || monthFromDate(employees.day) !== employees.month) {
+  if (validDateValue(employees.day)) {
+    employees.month = monthFromDate(employees.day) || employees.month;
+  } else {
+    const firstReportInMonth = employeeReports
+      .map(report => report.date)
+      .filter(date => validDateValue(date) && monthFromDate(date) === employees.month)
+      .sort()[0];
     employees.day = firstReportInMonth || `${employees.month}-01`;
-  }
-  employees.month = monthFromDate(employees.day) || employees.month;
-}
+  }}
 
 function render() {
   const taskRoute = getTaskFormRoute();
@@ -4638,8 +4638,8 @@ function restoreEmployeeViewState() {
   if (storedDay) {
     employees.day = storedDay;
     employees.month = monthFromDate(storedDay) || employees.month;
-  }
-}
+    saveStoredEmployeeDay(storedDay);
+  }}
 
 function escapeHtml(value) {
   return String(value ?? "")
