@@ -485,6 +485,7 @@ function render() {
   `;
 
   bindEvents();
+  mountProject2Frame();
 }
 
 function renderMainContent(section, taskRoute) {
@@ -639,6 +640,7 @@ function renderSectionBody(sectionId) {
   if (sectionId === "roadmap") return renderRoadmap();
   if (sectionId === "content") return renderContent();
   if (sectionId === "board") return renderBoard();
+  if (sectionId === "project2") return renderProject2();
   if (sectionId === "improvements") return renderImprovements();
   if (sectionId === "employees") return renderEmployees();
   if (sectionId === "settings") return renderSettings();
@@ -1602,21 +1604,51 @@ function renderEmployee(person, personIndex, day, month) {
 
   return `
     ${renderEmployeeTaskFinder(person, personIndex, month)}
-    <section class="employee-card employee-detail-card">
-      <div class="employee-summary">
-        <div>
-          <div class="employee-name">${escapeHtml(person.name || "Сотрудник")}</div>
+    <section class="employee-card employee-detail-card employee-detail-with-event">
+      <div class="employee-main-column">
+        <div class="employee-summary">
+          <div>
+            <div class="employee-name">${escapeHtml(person.name || "Сотрудник")}</div>
+          </div>
+          ${isPublicView ? "" : `<button class="button small" type="button" data-action="add-report" data-person-index="${personIndex}">${icon("plus")} Задача</button>`}
         </div>
-        ${isPublicView ? "" : `<button class="button small" type="button" data-action="add-report" data-person-index="${personIndex}">${icon("plus")} Задача</button>`}
+        <div class="employee-body">
+          ${renderEmployeeMonthlySummary(person, monthReports, month)}
+          ${reports.map(report => renderReport(report, personIndex)).join("") || `<div class="empty">Нет задач за выбранный день</div>`}
+        </div>
       </div>
-      <div class="employee-body">
-        ${renderEmployeeMonthlySummary(person, monthReports, month)}
-        ${reports.map(report => renderReport(report, personIndex)).join("") || `<div class="empty">Нет задач за выбранный день</div>`}
-      </div>
+      ${renderEmployeeEvent(person, day)}
     </section>
   `;
 }
 
+function renderEmployeeEvent(person, day) {
+  const date = validDateValue(day) ? new Date(`${day}T00:00:00`) : new Date();
+  const month = date.getMonth() + 1;
+  const dayNum = date.getDate();
+  const name = String(person?.name || "");
+  const birthdays = [
+    { match: "Злобина", day: 5, month: 12, text: "Арина, с днем рождения!" },
+    { match: "Мартьянова", day: 18, month: 3, text: "Полина, с днем рождения!" },
+    { match: "Власова", day: 6, month: 12, text: "Анастасия, с днем рождения!" },
+    { match: "Кислов", day: 22, month: 12, text: "Василий, с днем рождения!" },
+    { match: "Коврижных", day: 28, month: 2, text: "Наталья, с днем рождения!" },
+    { match: "Войлов", day: 10, month: 11, text: "Максим, с днем рождения!" },
+    { match: "Малых", day: 16, month: 11, text: "Максим, с днем рождения!" },
+    { match: "Новожилов", day: 13, month: 6, text: "Влад, с днем рождения!" }
+  ];
+  const birthday = birthdays.find(item => name.includes(item.match) && item.day === dayNum && item.month === month);
+  if (birthday) return `<aside class="employee-event employee-event-birthday"><button class="employee-event-close" type="button" onclick="this.closest('.employee-event').remove()">×</button><div class="employee-event-card">🎉<strong>${escapeHtml(birthday.text)}</strong><span>Поздравление сотрудника</span></div></aside>`;
+  if (month >= 9 && month <= 11) return renderSeasonEvent("autumn", "Осенняя анимация");
+  if (month === 12 || month <= 2) return renderSeasonEvent("winter", "Зимняя анимация");
+  if (month >= 3 && month <= 5) return renderSeasonEvent("spring", "Весенняя анимация");
+  return renderSeasonEvent("summer", "Летняя анимация");
+}
+
+function renderSeasonEvent(kind, label) {
+  const particles = Array.from({ length: 14 }, (_, index) => `<i style="--i:${index}"></i>`).join("");
+  return `<aside class="employee-event employee-event-${kind}"><button class="employee-event-close" type="button" onclick="this.closest('.employee-event').remove()">×</button><div class="employee-event-animation" aria-label="${escapeAttribute(label)}">${particles}</div></aside>`;
+}
 function renderEmployeeMonthlySummary(person, reports, month) {
   const completed = reports.filter(report => reportStatusValue(report) === "done").length;
   const inProgress = reports.filter(report => reportStatusValue(report) === "progress").length;
