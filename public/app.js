@@ -1642,7 +1642,8 @@ function renderEmployee(person, personIndex, day, month) {
 }
 
 function renderEmployeeEvent(person, day) {
-  const date = validDateValue(day) ? new Date(`${day}T00:00:00`) : new Date();
+  const eventDay = validDateValue(day) ? day : dateValue(new Date());
+  const date = new Date(`${eventDay}T00:00:00`);
   const month = date.getMonth() + 1;
   const dayNum = date.getDate();
   const name = String(person?.name || "");
@@ -1657,19 +1658,41 @@ function renderEmployeeEvent(person, day) {
     { match: "Новожилов", day: 13, month: 6, text: "Влад, с днем рождения!" }
   ];
   const birthday = birthdays.find(item => name.includes(item.match) && item.day === dayNum && item.month === month);
-  if (birthday) return renderBirthdayEvent(birthday);
-  if (month === 2 && dayNum === 23) return renderSpecialEvent("feb23", "23 февраля");
-  if (month === 3 && dayNum === 8) return renderSpecialEvent("march8", "8 марта");
-  if (month === 12 && dayNum >= 25 && dayNum <= 31) return renderSpecialEvent("christmas", "25-31 декабря");
-  if (month === 10 && dayNum === 30) return renderSpecialEvent("halloween", "30 октября");
-  if (month >= 9 && month <= 11) return renderSeasonEvent("autumn", "Осенняя анимация");
-  if (month === 12 || month <= 2) return renderSeasonEvent("winter", "Зимняя анимация");
-  if (month >= 3 && month <= 5) return renderSeasonEvent("spring", "Весенняя анимация");
-  return renderSeasonEvent("summer", "Летняя анимация");
+  if (birthday) return employeeEventClosed(eventDay, `birthday-${birthday.match}`) ? "" : renderBirthdayEvent(birthday, eventDay, `birthday-${birthday.match}`);
+  if (month === 2 && dayNum === 23) return employeeEventClosed(eventDay, "feb23") ? "" : renderSpecialEvent("feb23", "23 февраля", eventDay);
+  if (month === 3 && dayNum === 8) return employeeEventClosed(eventDay, "march8") ? "" : renderSpecialEvent("march8", "8 марта", eventDay);
+  if (month === 12 && dayNum >= 25 && dayNum <= 31) return employeeEventClosed(eventDay, "christmas") ? "" : renderSpecialEvent("christmas", "25-31 декабря", eventDay);
+  if (month === 10 && dayNum === 30) return employeeEventClosed(eventDay, "halloween") ? "" : renderSpecialEvent("halloween", "30 октября", eventDay);
+  if (month >= 9 && month <= 11) return employeeEventClosed(eventDay, "autumn") ? "" : renderSeasonEvent("autumn", "Осенняя анимация", eventDay);
+  if (month === 12 || month <= 2) return employeeEventClosed(eventDay, "winter") ? "" : renderSeasonEvent("winter", "Зимняя анимация", eventDay);
+  if (month >= 3 && month <= 5) return employeeEventClosed(eventDay, "spring") ? "" : renderSeasonEvent("spring", "Весенняя анимация", eventDay);
+  return employeeEventClosed(eventDay, "summer") ? "" : renderSeasonEvent("summer", "Летняя анимация", eventDay);
 }
 
-function renderBirthdayEvent(birthday) {
-  return `<aside class="employee-event employee-event-birthday"><button class="employee-event-close" type="button" onclick="this.closest('.employee-event').remove()">×</button><div class="employee-birthday-wrap"><img class="employee-birthday-image" src="${escapeAttribute(birthdayImageSrc(birthday.text))}" alt="${escapeAttribute(birthday.text)}"><strong>${escapeHtml(birthday.text)}</strong></div></aside>`;
+function employeeEventClosed(day, type) {
+  try { return localStorage.getItem(employeeEventCloseKey(day, type)) === "1"; } catch (error) { return false; }
+}
+
+function employeeEventCloseKey(day, type) {
+  return `konglomeratEmployeeEventClosed:${day}:${type}`;
+}
+
+function employeeEventCloseButton(day, type) {
+  const key = escapeAttribute(employeeEventCloseKey(day, type));
+  return `<button class="employee-event-close" type="button" style="position:absolute;right:14px;top:16px;z-index:30;width:38px;height:38px;border:0;border-radius:999px;background:#fff;box-shadow:0 8px 24px #0f172a26;font-size:24px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;color:#0f172a;cursor:pointer" onclick="try{localStorage.setItem('${key}','1')}catch(e){} this.closest('.employee-event').remove()">×</button>`;
+}
+
+function employeeEventShell(kind, inner, day, type) {
+  return `<aside class="employee-event employee-event-${kind}" style="display:block;position:relative;min-height:430px;width:100%;overflow:hidden;border-left:1px solid #dbe3ef;background:linear-gradient(180deg,#f8fafc 0%,#eef6ff 100%);isolation:isolate">${employeeEventCloseButton(day, type)}${employeeEventKeyframes()}${inner}</aside>`;
+}
+
+function employeeEventKeyframes() {
+  return `<style>@keyframes employeeEventFall{0%{transform:translate3d(0,-50px,0) rotate(var(--r,0deg)) scale(var(--s,1));opacity:0}10%{opacity:1}50%{transform:translate3d(calc(var(--dx,24px)*.45),215px,0) rotate(calc(var(--r,0deg) + 210deg)) scale(var(--s,1));opacity:1}100%{transform:translate3d(var(--dx,24px),490px,0) rotate(calc(var(--r,0deg) + 520deg)) scale(var(--s,1));opacity:.95}}@keyframes employeeEventFloat{0%{transform:translate3d(0,430px,0) scale(var(--s,1));opacity:0}12%{opacity:1}100%{transform:translate3d(0,-70px,0) scale(var(--s,1));opacity:.95}}</style>`;
+}
+
+function renderBirthdayEvent(birthday, day, type) {
+  const inner = `<div style="position:absolute;inset:24px;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center"><img src="${escapeAttribute(birthdayImageSrc(birthday.text))}" alt="${escapeAttribute(birthday.text)}" style="display:block;width:min(315px,100%);height:auto;min-height:210px;border-radius:18px;background:#fff;box-shadow:0 18px 44px #9d174d24;object-fit:contain"><strong style="display:inline-block;padding:9px 14px;border-radius:999px;background:#fff;color:#9d174d;font-size:18px;box-shadow:0 8px 24px #0f172a14">${escapeHtml(birthday.text)}</strong></div>`;
+  return employeeEventShell("birthday", inner, day, type);
 }
 
 function birthdayImageSrc(text) {
@@ -1678,35 +1701,41 @@ function birthdayImageSrc(text) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
-function renderSpecialEvent(kind, label) {
-  const particles = Array.from({ length: kind === "feb23" ? 10 : 26 }, (_, index) => {
+function renderSpecialEvent(kind, label, day) {
+  const particles = Array.from({ length: kind === "feb23" ? 12 : 28 }, (_, index) => {
     const x = 18 + ((index * 47) % 330);
     const delay = (-index * 0.2).toFixed(2);
     const duration = (4.4 + (index % 6) * 0.28).toFixed(2);
-    return `<i style="--x:${x}px;--delay:${delay}s;--dur:${duration}s;--s:${(0.72 + (index % 5) * 0.08).toFixed(2)}"></i>`;
+    const color = kind === "march8" ? "#fb7185" : kind === "christmas" ? "#f97316" : kind === "halloween" ? "#f97316" : "#7dd3fc";
+    return `<i style="position:absolute;left:${x}px;top:-30px;width:18px;height:14px;border-radius:80% 20% 80% 20%;background:${color};box-shadow:0 3px 8px #0002;animation:employeeEventFloat ${duration}s ease-in-out infinite;animation-delay:${delay}s;--s:${(0.78 + (index % 5) * 0.08).toFixed(2)}"></i>`;
   }).join("");
-  return `<aside class="employee-event employee-event-${kind}"><button class="employee-event-close" type="button" onclick="this.closest('.employee-event').remove()">×</button><div class="employee-event-animation employee-event-special" aria-label="${escapeAttribute(label)}">${particles}</div>${eventVisual(kind)}</aside>`;
+  const inner = `<div style="position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none" aria-label="${escapeAttribute(label)}">${particles}</div>${eventVisual(kind)}`;
+  return employeeEventShell(kind, inner, day, kind);
 }
 
 function eventVisual(kind) {
-  if (kind === "feb23") return `<div class="employee-event-figure employee-event-figure-bear"><span></span></div>`;
-  if (kind === "march8") return `<div class="employee-event-figure employee-event-figure-flower"><span></span><span></span><span></span></div>`;
-  if (kind === "christmas") return `<div class="employee-event-figure employee-event-figure-tree"><span></span></div>`;
-  if (kind === "halloween") return `<div class="employee-event-figure employee-event-figure-pumpkin"><span></span></div>`;
+  if (kind === "feb23") return `<div style="position:absolute;left:50%;top:50%;z-index:5;transform:translate(-50%,-50%);width:250px;height:250px;border-radius:50%;background:#b7d5dc;box-shadow:inset 0 -18px 0 #9cc7d0"><span style="position:absolute;left:78px;top:72px;width:94px;height:105px;border-radius:42% 42% 48% 48%;background:#8b5e3c;box-shadow:0 74px 0 -18px #f97316"></span><span style="position:absolute;left:58px;top:126px;width:135px;height:64px;border-radius:28px;background:#eff6ff;border:4px solid #bae6fd;transform:rotate(10deg)"></span><span style="position:absolute;left:96px;top:105px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:42px 0 0 #fff,4px 3px 0 3px #111827,46px 3px 0 3px #111827,23px 24px 0 5px #f5d0a9"></span></div>`;
+  if (kind === "march8") return `<div style="position:absolute;left:50%;top:50%;z-index:5;transform:translate(-50%,-50%);width:250px;height:250px"><span style="position:absolute;left:116px;top:92px;width:18px;height:118px;background:#16a34a;border-radius:999px"></span><span style="position:absolute;left:74px;top:50px;width:92px;height:92px;border-radius:80% 20% 80% 20%;background:#fb7185;box-shadow:0 10px 28px #fb718544"></span><span style="position:absolute;left:104px;top:86px;width:42px;height:42px;border-radius:999px;background:#facc15"></span></div>`;
+  if (kind === "christmas") return `<div style="position:absolute;left:50%;top:50%;z-index:5;transform:translate(-50%,-50%);width:250px;height:250px"><span style="position:absolute;left:80px;top:30px;border-left:70px solid transparent;border-right:70px solid transparent;border-bottom:100px solid #16a34a"></span><span style="position:absolute;left:55px;top:105px;border-left:95px solid transparent;border-right:95px solid transparent;border-bottom:120px solid #15803d"></span><span style="position:absolute;left:112px;top:210px;width:28px;height:36px;background:#92400e;border-radius:4px"></span></div>`;
+  if (kind === "halloween") return `<div style="position:absolute;left:50%;top:50%;z-index:5;transform:translate(-50%,-50%);width:250px;height:250px"><span style="position:absolute;left:40px;top:82px;width:170px;height:120px;border-radius:50%;background:#f97316;box-shadow:inset 28px 0 0 #ea580c,inset -28px 0 0 #ea580c,0 18px 38px #c2410c22"></span></div>`;
   return "";
 }
 
-function renderSeasonEvent(kind, label) {
-  const particles = Array.from({ length: 34 }, (_, index) => {
+function renderSeasonEvent(kind, label, day) {
+  const colors = { autumn: ["#e85d22", "#f97316", "#b91c1c"], winter: ["#7dd3fc", "#bae6fd", "#e0f2fe"], spring: ["#fb7185", "#f9a8d4", "#f472b6"], summer: ["#facc15", "#22c55e", "#38bdf8"] }[kind] || ["#e85d22"];
+  const particles = Array.from({ length: 36 }, (_, index) => {
     const x = (index * 43 + (index % 5) * 19) % 340;
     const dx = ((index % 9) - 4) * 18;
     const size = (0.78 + (index % 6) * 0.08).toFixed(2);
     const duration = (4.3 + (index % 7) * 0.38).toFixed(2);
     const delay = (-index * 0.18).toFixed(2);
     const rotate = (index * 31) % 180;
-    return `<i style="--x:${x}px;--dx:${dx}px;--s:${size};--dur:${duration}s;--delay:${delay}s;--r:${rotate}deg"></i>`;
+    const color = colors[index % colors.length];
+    const shape = kind === "winter" ? "border-radius:999px;width:12px;height:12px" : "border-radius:90% 0 90% 0;width:25px;height:15px";
+    return `<i style="display:block;position:absolute;left:${x}px;top:-34px;${shape};background:${color};box-shadow:0 3px 8px #0002;animation:employeeEventFall ${duration}s linear infinite;animation-delay:${delay}s;--dx:${dx}px;--s:${size};--r:${rotate}deg"></i>`;
   }).join("");
-  return `<aside class="employee-event employee-event-${kind}"><button class="employee-event-close" type="button" onclick="this.closest('.employee-event').remove()">×</button><div class="employee-event-animation" aria-label="${escapeAttribute(label)}">${particles}</div></aside>`;
+  const inner = `<div style="position:absolute;inset:0;z-index:2;overflow:hidden;pointer-events:none" aria-label="${escapeAttribute(label)}">${particles}</div>`;
+  return employeeEventShell(kind, inner, day, kind);
 }
 function renderEmployeeMonthlySummary(person, reports, month) {
   const completed = reports.filter(report => reportStatusValue(report) === "done").length;
