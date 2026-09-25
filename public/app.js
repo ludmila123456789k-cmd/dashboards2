@@ -1649,14 +1649,14 @@ function renderEmployeeEvent(person, day) {
   const dayNum = date.getDate();
   const name = String(person?.name || "");
   const birthdays = [
-    { key: "zlобина-arina", names: ["Злобина Арина", "Арина Злобина"], day: 5, month: 12, text: "Арина, с днем рождения!", image: "birthday-101.png" },
-    { key: "martyanova-polina", names: ["Мартьянова Полина", "Полина Мартьянова"], day: 18, month: 3, text: "Полина, с днем рождения!", image: "birthday-102.png" },
-    { key: "vlasova-anastasia", names: ["Власова Анастасия", "Анастасия Власова"], day: 6, month: 12, text: "Анастасия, с днем рождения!", image: "birthday-99.png" },
-    { key: "vasiliy-kislov", names: ["Василий Кислов", "Кислов Василий"], day: 22, month: 12, text: "Василий, с днем рождения!", image: "birthday-100.png" },
-    { key: "kovrizhnyh-natalia", names: ["Коврижных Наталья", "Наталья Коврижных"], day: 28, month: 2, text: "Наталья, с днем рождения!", image: "birthday-104.png" },
-    { key: "voilov-maxim", names: ["Войлов Максим", "Максим Войлов"], day: 10, month: 11, text: "Максим, с днем рождения!", image: "birthday-98.png" },
-    { key: "maxim-malyh", names: ["Максим Малых", "Малых Максим"], day: 16, month: 11, text: "Максим, с днем рождения!", image: "birthday-106.png" },
-    { key: "novozhilov-vladislav", names: ["Новожилов Владислав", "Владислав Новожилов", "Новожилов Влад", "Влад Новожилов"], day: 13, month: 6, text: "Влад, с днем рождения!", image: "birthday-105.png" }
+    { key: "zlобина-arina", names: ["Злобина Арина", "Арина Злобина"], day: 5, month: 12, text: "Арина, с днем рождения!", image: "birthday-101.webp" },
+    { key: "martyanova-polina", names: ["Мартьянова Полина", "Полина Мартьянова"], day: 18, month: 3, text: "Полина, с днем рождения!", image: "birthday-102.webp" },
+    { key: "vlasova-anastasia", names: ["Власова Анастасия", "Анастасия Власова"], day: 6, month: 12, text: "Анастасия, с днем рождения!", image: "birthday-106.webp" },
+    { key: "vasiliy-kislov", names: ["Василий Кислов", "Кислов Василий"], day: 22, month: 12, text: "Василий, с днем рождения!", image: "birthday-100.webp" },
+    { key: "kovrizhnyh-natalia", names: ["Коврижных Наталья", "Наталья Коврижных"], day: 28, month: 2, text: "Наталья, с днем рождения!", image: "birthday-104.webp" },
+    { key: "voilov-maxim", names: ["Войлов Максим", "Максим Войлов"], day: 10, month: 11, text: "Максим, с днем рождения!", image: "birthday-98.webp" },
+    { key: "maxim-malyh", names: ["Максим Малых", "Малых Максим"], day: 16, month: 11, text: "Максим, с днем рождения!", image: "birthday-106.webp" },
+    { key: "novozhilov-vladislav", names: ["Новожилов Владислав", "Владислав Новожилов", "Новожилов Влад", "Влад Новожилов"], day: 13, month: 6, text: "Влад, с днем рождения!", image: "birthday-99.webp" }
   ];
   const birthday = birthdays.find(item => employeeBirthdayMatches(name, item) && item.day === dayNum && item.month === month);
   if (birthday) return employeeEventClosed(eventDay, `birthday-${birthday.key}`) ? "" : renderBirthdayEvent(birthday, eventDay, `birthday-${birthday.key}`);
