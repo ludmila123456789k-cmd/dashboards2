@@ -12,7 +12,19 @@ const PROJECT2_HTML_BASE64 = 'PCFkb2N0eXBlIGh0bWw+CjxodG1sIGxhbmc9InJ1Ij4KPGhlYW
 function decodeProject2Html() {
   const binary = atob(PROJECT2_HTML_BASE64);
   const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
-  return new TextDecoder('utf-8').decode(bytes);
+  const html = new TextDecoder('utf-8').decode(bytes);
+  const fix = `<style>
+    .app{grid-template-columns:1fr!important;min-height:100vh!important}
+    .app>.sidebar{display:none!important}
+    .content{padding:22px 26px!important;max-width:none!important;overflow-x:hidden!important}
+    .board{grid-template-columns:repeat(5,minmax(190px,1fr))!important;gap:10px!important;overflow-x:auto!important;padding-bottom:10px!important}
+    .col{min-width:190px!important;padding:9px!important}
+    .filters{grid-template-columns:minmax(220px,1fr) repeat(4,minmax(145px,170px)) auto!important;gap:10px!important;overflow-x:auto!important}
+    .card{padding:10px!important}.card button{padding:8px 10px!important;margin-top:4px!important}.meta{gap:5px!important}
+    .head{padding-right:8px!important}.head h1{font-size:30px!important}.tabs button{padding:9px 13px!important}
+    @media(max-width:1200px){.board{grid-template-columns:repeat(5,190px)!important}.filters{grid-template-columns:220px repeat(4,155px) auto!important}}
+  </style>`;
+  return html.replace('</head>', `${fix}</head>`);
 }
 const CONTENT_TYPES = ["статьи", "новости", "кейсы", "соцсети", "email", "выставки", "категории", "товары", "отзывы", "съемка видео", "съемка фото"];
 const ROADMAP_STATUSES = [
