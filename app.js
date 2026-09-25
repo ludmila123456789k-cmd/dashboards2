@@ -505,6 +505,7 @@ function render() {
 
   bindEvents();
   mountProject2Frame();
+  initEmployeeEventAnimations();
 }
 
 function renderMainContent(section, taskRoute) {
