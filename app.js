@@ -1,4 +1,4 @@
-const SECTIONS = [
+﻿const SECTIONS = [
   { id: "roadmap", label: "Marketing Roadmap", icon: "map" },
   { id: "content", label: "Контент-календарь", icon: "calendar" },
   { id: "board", label: "Доска проектов", icon: "board" },
@@ -14,16 +14,23 @@ function decodeProject2Html() {
   const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
   const html = new TextDecoder('utf-8').decode(bytes);
   const fix = `<style>
-    .app{grid-template-columns:1fr!important;min-height:100vh!important}
-    .app>.sidebar{display:none!important}
-    .content{padding:22px 26px!important;max-width:none!important;overflow-x:hidden!important}
-    .board{grid-template-columns:repeat(5,minmax(190px,1fr))!important;gap:10px!important;overflow-x:auto!important;padding-bottom:10px!important}
-    .col{min-width:190px!important;padding:9px!important}
-    .filters{grid-template-columns:minmax(220px,1fr) repeat(4,minmax(145px,170px)) auto!important;gap:10px!important;overflow-x:auto!important}
-    .card{padding:10px!important}.card button{padding:8px 10px!important;margin-top:4px!important}.meta{gap:5px!important}
-    .head{padding-right:8px!important}.head h1{font-size:30px!important}.tabs button{padding:9px 13px!important}
-    @media(max-width:1200px){.board{grid-template-columns:repeat(5,190px)!important}.filters{grid-template-columns:220px repeat(4,155px) auto!important}}
-  </style>`;
+  html,body{margin:0!important;padding:0!important;width:100%!important;min-height:100%!important;overflow:hidden!important;background:#f6f8fb!important}
+  .app{display:block!important;min-height:100vh!important;width:100%!important;background:#f6f8fb!important}
+  .app>.sidebar{display:none!important}
+  .content{padding:14px 18px 22px!important;margin:0!important;max-width:none!important;width:100%!important;box-sizing:border-box!important;overflow:hidden!important}
+  .head{margin:0 0 14px!important;padding:0!important;align-items:flex-start!important}
+  .head>div>.muted:first-child{display:none!important}
+  .head h1{margin-top:0!important;font-size:28px!important;line-height:1.08!important}
+  .tabs{margin-bottom:14px!important}
+  .filters{grid-template-columns:minmax(260px,1fr) repeat(4,minmax(150px,170px)) auto!important;gap:10px!important;overflow-x:auto!important;padding-bottom:2px!important}
+  .board{grid-template-columns:repeat(5,minmax(195px,1fr))!important;gap:10px!important;overflow-x:hidden!important;padding-bottom:12px!important;width:100%!important}
+  .col{min-width:0!important;padding:9px!important;min-height:520px!important}
+  .card{padding:10px!important;margin-bottom:10px!important}
+  .card button{padding:8px 12px!important;white-space:nowrap!important}
+  .meta{gap:5px!important}
+  .pill{font-size:12px!important;padding:3px 7px!important}
+  @media(max-width:1200px){.board{grid-template-columns:repeat(5,minmax(185px,1fr))!important}.content{padding:12px!important}}
+</style>`;
   return html.replace('</head>', `${fix}</head>`);
 }
 const CONTENT_TYPES = ["статьи", "новости", "кейсы", "соцсети", "email", "выставки", "категории", "товары", "отзывы", "съемка видео", "съемка фото"];
@@ -589,7 +596,7 @@ function renderSection(section) {
 
 function renderSectionActions(sectionId) {
   if (isPublicView) return "";
-  if (sectionId === "settings") return "";
+  if (sectionId === "settings" || sectionId === "project2") return "";
 
   if (sectionId === "employees") {
     const people = workspace.sections.employees.people || [];
@@ -661,7 +668,7 @@ function renderSectionBody(sectionId) {
 
 function renderSectionActions(sectionId) {
   if (isPublicView) return "";
-  if (sectionId === "settings") return "";
+  if (sectionId === "settings" || sectionId === "project2") return "";
 
   if (sectionId === "employees") {
     const people = workspace.sections.employees.people || [];
@@ -1650,15 +1657,55 @@ function renderEmployeeEvent(person, day) {
     { match: "Новожилов", day: 13, month: 6, text: "Влад, с днем рождения!" }
   ];
   const birthday = birthdays.find(item => name.includes(item.match) && item.day === dayNum && item.month === month);
-  if (birthday) return `<aside class="employee-event employee-event-birthday"><button class="employee-event-close" type="button" onclick="this.closest('.employee-event').remove()">×</button><div class="employee-event-card">🎉<strong>${escapeHtml(birthday.text)}</strong><span>Поздравление сотрудника</span></div></aside>`;
+  if (birthday) return renderBirthdayEvent(birthday);
+  if (month === 2 && dayNum === 23) return renderSpecialEvent("feb23", "23 февраля");
+  if (month === 3 && dayNum === 8) return renderSpecialEvent("march8", "8 марта");
+  if (month === 12 && dayNum >= 25 && dayNum <= 31) return renderSpecialEvent("christmas", "25-31 декабря");
+  if (month === 10 && dayNum === 30) return renderSpecialEvent("halloween", "30 октября");
   if (month >= 9 && month <= 11) return renderSeasonEvent("autumn", "Осенняя анимация");
   if (month === 12 || month <= 2) return renderSeasonEvent("winter", "Зимняя анимация");
   if (month >= 3 && month <= 5) return renderSeasonEvent("spring", "Весенняя анимация");
   return renderSeasonEvent("summer", "Летняя анимация");
 }
 
+function renderBirthdayEvent(birthday) {
+  return `<aside class="employee-event employee-event-birthday"><button class="employee-event-close" type="button" onclick="this.closest('.employee-event').remove()">×</button><div class="employee-birthday-wrap"><img class="employee-birthday-image" src="${escapeAttribute(birthdayImageSrc(birthday.text))}" alt="${escapeAttribute(birthday.text)}"><strong>${escapeHtml(birthday.text)}</strong></div></aside>`;
+}
+
+function birthdayImageSrc(text) {
+  const safe = String(text || "С днем рождения!").replace(/[&<>]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[char]));
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 360"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff7ed"/><stop offset="1" stop-color="#fce7f3"/></linearGradient><filter id="s"><feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#9d174d" flood-opacity=".18"/></filter></defs><rect width="520" height="360" rx="26" fill="url(#g)"/><circle cx="86" cy="78" r="38" fill="#fb7185" opacity=".22"/><circle cx="440" cy="74" r="46" fill="#f97316" opacity=".2"/><path d="M92 265c58-76 102-36 154-76 57-44 117-38 176 22" fill="none" stroke="#fb7185" stroke-width="16" stroke-linecap="round" opacity=".36"/><g filter="url(#s)"><rect x="130" y="120" width="260" height="150" rx="20" fill="#fff"/><path d="M130 166h260" stroke="#f9a8d4" stroke-width="12"/><path d="M260 120v150" stroke="#f9a8d4" stroke-width="12"/><path d="M208 119c-30-26-20-58 10-54 28 4 30 37 42 54-37 2-43 0-52 0Zm104 0c30-26 20-58-10-54-28 4-30 37-42 54 37 2 43 0 52 0Z" fill="#fb7185"/></g><text x="260" y="318" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="800" fill="#9d174d">${safe}</text></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+function renderSpecialEvent(kind, label) {
+  const particles = Array.from({ length: kind === "feb23" ? 10 : 26 }, (_, index) => {
+    const x = 18 + ((index * 47) % 330);
+    const delay = (-index * 0.2).toFixed(2);
+    const duration = (4.4 + (index % 6) * 0.28).toFixed(2);
+    return `<i style="--x:${x}px;--delay:${delay}s;--dur:${duration}s;--s:${(0.72 + (index % 5) * 0.08).toFixed(2)}"></i>`;
+  }).join("");
+  return `<aside class="employee-event employee-event-${kind}"><button class="employee-event-close" type="button" onclick="this.closest('.employee-event').remove()">×</button><div class="employee-event-animation employee-event-special" aria-label="${escapeAttribute(label)}">${particles}</div>${eventVisual(kind)}</aside>`;
+}
+
+function eventVisual(kind) {
+  if (kind === "feb23") return `<div class="employee-event-figure employee-event-figure-bear"><span></span></div>`;
+  if (kind === "march8") return `<div class="employee-event-figure employee-event-figure-flower"><span></span><span></span><span></span></div>`;
+  if (kind === "christmas") return `<div class="employee-event-figure employee-event-figure-tree"><span></span></div>`;
+  if (kind === "halloween") return `<div class="employee-event-figure employee-event-figure-pumpkin"><span></span></div>`;
+  return "";
+}
+
 function renderSeasonEvent(kind, label) {
-  const particles = Array.from({ length: 14 }, (_, index) => `<i style="--i:${index}"></i>`).join("");
+  const particles = Array.from({ length: 34 }, (_, index) => {
+    const x = (index * 43 + (index % 5) * 19) % 340;
+    const dx = ((index % 9) - 4) * 18;
+    const size = (0.78 + (index % 6) * 0.08).toFixed(2);
+    const duration = (4.3 + (index % 7) * 0.38).toFixed(2);
+    const delay = (-index * 0.18).toFixed(2);
+    const rotate = (index * 31) % 180;
+    return `<i style="--x:${x}px;--dx:${dx}px;--s:${size};--dur:${duration}s;--delay:${delay}s;--r:${rotate}deg"></i>`;
+  }).join("");
   return `<aside class="employee-event employee-event-${kind}"><button class="employee-event-close" type="button" onclick="this.closest('.employee-event').remove()">×</button><div class="employee-event-animation" aria-label="${escapeAttribute(label)}">${particles}</div></aside>`;
 }
 function renderEmployeeMonthlySummary(person, reports, month) {
