@@ -21,6 +21,8 @@ const EDITOR_PASSWORD = process.env.EDITOR_PASSWORD || "";
 const PUBLIC_BASE_URL = normalizeBaseUrl(process.env.PUBLIC_BASE_URL || "");
 const PUBLIC_VIEW_BASE_URL = normalizeBaseUrl(process.env.PUBLIC_VIEW_BASE_URL || PUBLIC_BASE_URL);
 const EDITOR_BASE_URL = normalizeBaseUrl(process.env.EDITOR_BASE_URL || "");
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
+const TELEGRAM_DEFAULT_CHAT_ID = process.env.TELEGRAM_DEFAULT_CHAT_ID || "";
 const AUTH_COOKIE = "marketing_editor_session";
 const AUTH_SECRET = process.env.AUTH_SECRET || crypto.randomBytes(32).toString("hex");
 const AUTH_TOKEN = EDITOR_PASSWORD
@@ -898,6 +900,72 @@ async function handleLogin(req, res) {
   }
 }
 
+async function handleSendTelegram(req, res) {
+  if (!requireEditor(req, res)) return;
+
+  if (!TELEGRAM_BOT_TOKEN) {
+    sendJson(res, 503, { error: "TELEGRAM_BOT_TOKEN не задан в переменных Render" });
+    return;
+  }
+
+  try {
+    const payload = JSON.parse(await readBody(req) || "{}");
+    const chatId = normalizeTelegramTarget(payload.telegram || payload.chatId || TELEGRAM_DEFAULT_CHAT_ID);
+    const text = String(payload.text || "").trim();
+
+    if (!chatId) {
+      sendJson(res, 400, { error: "У исполнителя не указан Telegram chat_id или username" });
+      return;
+    }
+    if (!text) {
+      sendJson(res, 400, { error: "Пустой текст уведомления" });
+      return;
+    }
+
+    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: "HTML",
+        disable_web_page_preview: true
+      })
+    });
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok || result.ok === false) {
+      sendJson(res, 502, {
+        error: telegramErrorMessage(result.description || response.statusText || "Telegram rejected message")
+      });
+      return;
+    }
+
+    sendJson(res, 200, { ok: true });
+  } catch (error) {
+    sendJson(res, 400, { error: "Не удалось отправить уведомление в Telegram" });
+  }
+}
+
+function normalizeTelegramTarget(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const match = raw.match(/(?:https?:\/\/)?t\.me\/([^/?#]+)/i);
+  if (match) return `@${match[1].replace(/^@/, "")}`;
+  return raw;
+}
+
+function telegramErrorMessage(description) {
+  const message = String(description || "");
+  if (/chat not found/i.test(message)) {
+    return "Telegram не нашел этот чат. Для личных сообщений нужен chat_id: пользователь должен сначала написать вашему боту.";
+  }
+  if (/bot was blocked/i.test(message)) {
+    return "Пользователь заблокировал бота или не начинал с ним чат.";
+  }
+  return `Telegram не принял сообщение: ${message}`;
+}
+
 function serveStatic(req, res, pathname) {
   const isAppRoute = pathname === "/" || pathname.startsWith("/view/") || pathname === "/tasks/new" || /^\/tasks\/[^/]+\/edit$/.test(pathname);
   const routePath = isAppRoute ? "/index.html" : pathname;
@@ -947,6 +1015,11 @@ async function handleApi(req, res, pathname) {
       { ok: true, requiresPassword: Boolean(EDITOR_PASSWORD), authenticated: false },
       { "Set-Cookie": `${AUTH_COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0` }
     );
+    return;
+  }
+
+  if (req.method === "POST" && pathname === "/api/telegram/send") {
+    await handleSendTelegram(req, res);
     return;
   }
 

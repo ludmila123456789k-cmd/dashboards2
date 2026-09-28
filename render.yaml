@@ -19,3 +19,5 @@ services:
         sync: false
       - key: AUTH_SECRET
         generateValue: true
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
