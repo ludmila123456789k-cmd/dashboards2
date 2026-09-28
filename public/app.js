@@ -1,7 +1,6 @@
 ﻿const SECTIONS = [
   { id: "roadmap", label: "Marketing Roadmap", icon: "map" },
   { id: "content", label: "Контент-календарь", icon: "calendar" },
-  { id: "board", label: "Доска проектов", icon: "board" },
   { id: "project2", label: "Доска проектов 2", icon: "board" },
   { id: "employees", label: "Отчеты сотрудников", icon: "users" },
   { id: "settings", label: "Настройки", icon: "settings" }
@@ -4516,6 +4515,7 @@ function navigateToTaskReturn(returnUrl) {
   const target = normalizeTaskReturnUrl(returnUrl) || employeeListUrl(activeEmployeeId, workspace?.sections?.employees?.day);
   history.pushState(null, "", target);
   activeSection = readViewStateParam("section") || "employees";
+  if (activeSection === "board") activeSection = "project2";
   restoreEmployeeViewState();
   render();
 }
