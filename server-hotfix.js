@@ -94,6 +94,28 @@ function patchProject2AppScript(source) {
   const newSaveServer = "async function saveProject2ToServer(state,showErrors=false){try{const response=await fetch('/api/project2',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({project2:state})});if(!response.ok){if(showErrors)alert('Не удалось сохранить общую доску на сервер');return}const payload=await response.json().catch(()=>({}));const shared=payload?.project2;if(shared&&shared.initialized){applyProject2State(shared);writeLocalProject2State(project2StateSnapshot());exportDoneTasksToEmployees();render()}}catch(e){if(showErrors)alert('Не удалось сохранить общую доску на сервер')}}";
   html = html.replace(oldSaveServer, newSaveServer);
 
+  html = html.replace(
+    /let tasks=\[[\s\S]*?\];\s*let backlog=\[[\s\S]*?\];\s*function task/,
+    "let tasks=[];\n    let backlog=[];\n    function task"
+  );
+
+  if (!html.includes("function touchProject2Item(item)")) {
+    html = html.replace(
+      "function task(id,number,title,status,priority,assignee,description,category='Frontend'){const time=new Date().toISOString();return{id,number,title,status,priority,assignee,start:'',due:'2026-09-25',description,category,createdAt:time,updatedAt:time}}",
+      "function task(id,number,title,status,priority,assignee,description,category='Frontend'){const time=new Date().toISOString();return{id,number,title,status,priority,assignee,start:'',due:'2026-09-25',description,category,createdAt:time,updatedAt:time}}\n    function touchProject2Item(item){if(item)item.updatedAt=new Date().toISOString();return item}"
+    );
+  }
+
+  html = html.replace(
+    "function moveCurrentToBacklog(){if(editSource!=='tasks')return;const i=tasks.findIndex(t=>t.id===editId);if(i>-1){backlog.push(tasks.splice(i,1)[0]);persistProject2();closeModal();render()}}function moveCurrentToKanban(){if(editSource!=='backlog')return;const i=backlog.findIndex(t=>t.id===editId);if(i>-1){tasks.push(backlog.splice(i,1)[0]);persistProject2();closeModal();render()}}",
+    "function moveCurrentToBacklog(){if(editSource!=='tasks')return;const i=tasks.findIndex(t=>t.id===editId);if(i>-1){backlog.push(touchProject2Item(tasks.splice(i,1)[0]));persistProject2();closeModal();render()}}function moveCurrentToKanban(){if(editSource!=='backlog')return;const i=backlog.findIndex(t=>t.id===editId);if(i>-1){tasks.push(touchProject2Item(backlog.splice(i,1)[0]));persistProject2();closeModal();render()}}"
+  );
+
+  html = html.replace(
+    "function moveToKanban(id){const i=backlog.findIndex(x=>x.id===id);if(i>-1){tasks.push(backlog.splice(i,1)[0]);persistProject2();render()}}function moveToBacklog(id){const i=tasks.findIndex(x=>x.id===id);if(i>-1){backlog.push(tasks.splice(i,1)[0]);persistProject2();render()}}",
+    "function moveToKanban(id){const i=backlog.findIndex(x=>x.id===id);if(i>-1){tasks.push(touchProject2Item(backlog.splice(i,1)[0]));persistProject2();render()}}function moveToBacklog(id){const i=tasks.findIndex(x=>x.id===id);if(i>-1){backlog.push(touchProject2Item(tasks.splice(i,1)[0]));persistProject2();render()}}"
+  );
+
   const nextBase64 = Buffer.from(html, "utf8").toString("base64");
   return source.replace(match[1], nextBase64);
 }
@@ -142,6 +164,24 @@ function loadEnvFile(filePath) {
 }
 
 
+const PROJECT2_DEMO_TASKS = new Map([
+  ["t1", "Подготовить структуру карточки"],
+  ["t2", "Добавить связи задач"],
+  ["t3", "Kanban и перенос задач"],
+  ["t4", "Бэклог"],
+  ["t5", "Проверка отчета"],
+  ["t6", "Ждем доступы"],
+  ["t7", "Справочник исполнителей"],
+  ["b1", "Разобрать требования по отчетности"],
+  ["b2", "Импорт старых задач"]
+]);
+
+function isProject2DemoTask(item) {
+  const id = String(item?.id || "");
+  const title = String(item?.title || "").trim();
+  return Boolean(id && PROJECT2_DEMO_TASKS.get(id) === title);
+}
+
 function normalizeProject2Payload(value) {
   const source = value && typeof value === "object" ? value : {};
   return {
@@ -149,8 +189,8 @@ function normalizeProject2Payload(value) {
     updatedAt: source.updatedAt || now(),
     people: Array.isArray(source.people) ? source.people : [],
     categories: Array.isArray(source.categories) ? source.categories : [],
-    tasks: Array.isArray(source.tasks) ? source.tasks : [],
-    backlog: Array.isArray(source.backlog) ? source.backlog : [],
+    tasks: Array.isArray(source.tasks) ? source.tasks.filter(item => !isProject2DemoTask(item)) : [],
+    backlog: Array.isArray(source.backlog) ? source.backlog.filter(item => !isProject2DemoTask(item)) : [],
     deletedTaskIds: Array.isArray(source.deletedTaskIds) ? source.deletedTaskIds.filter(Boolean).slice(-1000) : [],
     deletedBacklogIds: Array.isArray(source.deletedBacklogIds) ? source.deletedBacklogIds.filter(Boolean).slice(-1000) : [],
     filters: source.filters && typeof source.filters === "object" ? source.filters : {}
