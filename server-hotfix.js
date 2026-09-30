@@ -20,6 +20,8 @@ const AUTH_SECRET = process.env.AUTH_SECRET;
 const AUTH_TOKEN = EDITOR_PASSWORD
   ? crypto.createHmac("sha256", AUTH_SECRET).update(EDITOR_PASSWORD).digest("hex")
   : "";
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
+const TELEGRAM_DEFAULT_CHAT_ID = process.env.TELEGRAM_DEFAULT_CHAT_ID || "";
 const REPORT_FIELDS = ["title", "text", "date", "status", "attachments"];
 const REPORT_STATUSES = new Set(["plan", "progress", "done"]);
 
@@ -28,8 +30,20 @@ http.createServer = function createPatchedServer(listener) {
   return originalCreateServer(async (req, res) => {
     try {
       const pathname = new URL(req.url || "/", "http://localhost").pathname;
+      if (req.method === "GET" && pathname === "/app.js") {
+        servePatchedAppJs(res);
+        return;
+      }
       if (req.method === "PUT" && pathname === "/api/employees/report") {
         await handleSaveEmployeeReport(req, res);
+        return;
+      }
+      if (req.method === "POST" && pathname === "/api/telegram/send") {
+        await handleSendTelegram(req, res);
+        return;
+      }
+      if (pathname === "/api/project2") {
+        await handleProject2(req, res);
         return;
       }
     } catch (error) {
@@ -44,6 +58,66 @@ http.createServer = function createPatchedServer(listener) {
 };
 
 require("./server.js");
+
+function patchProject2AppScript(source) {
+  const match = source.match(/const PROJECT2_HTML_BASE64 = '([^']+)'/);
+  if (!match) return source;
+
+  let html;
+  try {
+    html = Buffer.from(match[1], "base64").toString("utf8");
+  } catch (error) {
+    return source;
+  }
+
+  html = html.replace(
+    /function project2HasContent\(state\)\{[^}]*\}/,
+    "function project2HasContent(state){return Boolean(state&&state.initialized&&project2ItemCount(state)>0)}"
+  );
+
+  if (!html.includes("function project2DeleteCount(state)")) {
+    html = html.replace(
+      "function project2ItemCount(state){return (Array.isArray(state?.tasks)?state.tasks.length:0)+(Array.isArray(state?.backlog)?state.backlog.length:0)}",
+      "function project2ItemCount(state){return (Array.isArray(state?.tasks)?state.tasks.length:0)+(Array.isArray(state?.backlog)?state.backlog.length:0)}\n    function project2DeleteCount(state){return (Array.isArray(state?.deletedTaskIds)?state.deletedTaskIds.length:0)+(Array.isArray(state?.deletedBacklogIds)?state.deletedBacklogIds.length:0)}"
+    );
+  }
+
+  const oldLoad = "async function loadProject2State(){const localState=readLocalProject2State();applyProject2State(localState);try{const response=await fetch('/api/project2',{cache:'no-store'});if(!response.ok)return;const payload=await response.json();const shared=payload?.project2;if(project2HasContent(shared)){applyProject2State(shared);writeLocalProject2State(project2StateSnapshot());exportDoneTasksToEmployees();render();return}if(project2HasContent(localState)||tasks.length||backlog.length)saveProject2State(false)}catch(e){}}";
+  const newLoad = "async function loadProject2State(){try{const response=await fetch('/api/project2',{cache:'no-store'});if(response.ok){const payload=await response.json();const shared=payload?.project2;if(shared&&shared.initialized){applyProject2State(shared);writeLocalProject2State(project2StateSnapshot());exportDoneTasksToEmployees();render();return}}}catch(e){}const localState=readLocalProject2State();if(project2HasContent(localState)){applyProject2State(localState);exportDoneTasksToEmployees();render();}}";
+  html = html.replace(oldLoad, newLoad);
+
+  const oldSave = "async function saveProject2State(showMessage){try{const state=project2StateSnapshot();writeLocalProject2State(state);exportDoneTasksToEmployees();clearTimeout(project2SaveTimer);project2SaveTimer=setTimeout(()=>saveProject2ToServer(state,showMessage),showMessage?0:250);if(showMessage)alert('Сохранено');}catch(e){alert('Не удалось сохранить. Проверьте доступ к памяти браузера.')}}";
+  const newSave = "async function saveProject2State(showMessage){try{const state=project2StateSnapshot();if(project2ItemCount(state)===0&&project2DeleteCount(state)===0){if(showMessage)alert('Нет задач для сохранения');return}writeLocalProject2State(state);exportDoneTasksToEmployees();clearTimeout(project2SaveTimer);project2SaveTimer=setTimeout(()=>saveProject2ToServer(state,showMessage),showMessage?0:250);if(showMessage)alert('Сохранено');}catch(e){alert('Не удалось сохранить. Проверьте доступ к памяти браузера.')}}";
+  html = html.replace(oldSave, newSave);
+
+  const oldSaveServer = "async function saveProject2ToServer(state,showErrors=false){try{const response=await fetch('/api/project2',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({project2:state})});if(!response.ok&&showErrors)alert('Не удалось сохранить общую доску на сервер')}catch(e){if(showErrors)alert('Не удалось сохранить общую доску на сервер')}}";
+  const newSaveServer = "async function saveProject2ToServer(state,showErrors=false){try{const response=await fetch('/api/project2',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({project2:state})});if(!response.ok){if(showErrors)alert('Не удалось сохранить общую доску на сервер');return}const payload=await response.json().catch(()=>({}));const shared=payload?.project2;if(shared&&shared.initialized){applyProject2State(shared);writeLocalProject2State(project2StateSnapshot());exportDoneTasksToEmployees();render()}}catch(e){if(showErrors)alert('Не удалось сохранить общую доску на сервер')}}";
+  html = html.replace(oldSaveServer, newSaveServer);
+
+  const nextBase64 = Buffer.from(html, "utf8").toString("base64");
+  return source.replace(match[1], nextBase64);
+}
+
+function servePatchedAppJs(res) {
+  const appPath = path.join(ROOT, "public", "app.js");
+  fs.readFile(appPath, "utf8", (error, content) => {
+    if (error) {
+      res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("Not found");
+      return;
+    }
+    const patched = patchProject2AppScript(content);
+    res.writeHead(200, {
+      "Content-Type": "application/javascript; charset=utf-8",
+      "Cache-Control": "no-store"
+    });
+    res.end(patched);
+  });
+}
+
+function now() {
+  return new Date().toISOString();
+}
 
 function resolveDataDir() {
   if (process.env.DATA_DIR) return path.resolve(process.env.DATA_DIR);
@@ -65,6 +139,109 @@ function loadEnvFile(filePath) {
     }
     if (key && process.env[key] === undefined) process.env[key] = value;
   }
+}
+
+
+function normalizeProject2Payload(value) {
+  const source = value && typeof value === "object" ? value : {};
+  return {
+    initialized: Boolean(source.initialized || Array.isArray(source.tasks) || Array.isArray(source.backlog)),
+    updatedAt: source.updatedAt || now(),
+    people: Array.isArray(source.people) ? source.people : [],
+    categories: Array.isArray(source.categories) ? source.categories : [],
+    tasks: Array.isArray(source.tasks) ? source.tasks : [],
+    backlog: Array.isArray(source.backlog) ? source.backlog : [],
+    deletedTaskIds: Array.isArray(source.deletedTaskIds) ? source.deletedTaskIds.filter(Boolean).slice(-1000) : [],
+    deletedBacklogIds: Array.isArray(source.deletedBacklogIds) ? source.deletedBacklogIds.filter(Boolean).slice(-1000) : [],
+    filters: source.filters && typeof source.filters === "object" ? source.filters : {}
+  };
+}
+
+function project2ItemKey(item) {
+  return String(item?.id || item?.number || item?.title || "");
+}
+
+function project2Timestamp(value) {
+  const time = Date.parse(value || "");
+  return Number.isFinite(time) ? time : 0;
+}
+
+function mergeProject2Item(currentItem, incomingItem) {
+  if (!currentItem) return incomingItem;
+  if (!incomingItem) return currentItem;
+  const currentTime = project2Timestamp(currentItem.updatedAt || currentItem.createdAt);
+  const incomingTime = project2Timestamp(incomingItem.updatedAt || incomingItem.createdAt);
+  return incomingTime >= currentTime ? { ...currentItem, ...incomingItem } : { ...incomingItem, ...currentItem };
+}
+
+function mergeProject2Items(currentItems = [], incomingItems = [], deletedIds = new Set()) {
+  const items = new Map();
+  (Array.isArray(currentItems) ? currentItems : []).forEach(item => {
+    const key = project2ItemKey(item);
+    if (key && !deletedIds.has(key)) items.set(key, item);
+  });
+  (Array.isArray(incomingItems) ? incomingItems : []).forEach(item => {
+    const key = project2ItemKey(item);
+    if (key && !deletedIds.has(key)) items.set(key, mergeProject2Item(items.get(key), item));
+  });
+  return Array.from(items.values()).sort((a, b) => (Number(a.number) || 0) - (Number(b.number) || 0));
+}
+
+function project2ItemCount(state = {}) {
+  return (Array.isArray(state.tasks) ? state.tasks.length : 0) + (Array.isArray(state.backlog) ? state.backlog.length : 0);
+}
+
+function project2DeleteCount(state = {}) {
+  return (Array.isArray(state.deletedTaskIds) ? state.deletedTaskIds.length : 0) + (Array.isArray(state.deletedBacklogIds) ? state.deletedBacklogIds.length : 0);
+}
+
+function mergeProject2State(currentState = {}, incomingState = {}) {
+  const current = normalizeProject2Payload(currentState);
+  const incoming = normalizeProject2Payload(incomingState);
+  if (project2ItemCount(current) > 0 && project2ItemCount(incoming) === 0 && project2DeleteCount(incoming) === 0) {
+    return current;
+  }
+  return {
+    ...current,
+    ...incoming,
+    people: incoming.people.length ? incoming.people : current.people,
+    categories: incoming.categories.length ? incoming.categories : current.categories,
+    deletedTaskIds: Array.from(new Set([...(current.deletedTaskIds || []), ...(incoming.deletedTaskIds || [])])).slice(-1000),
+    deletedBacklogIds: Array.from(new Set([...(current.deletedBacklogIds || []), ...(incoming.deletedBacklogIds || [])])).slice(-1000),
+    tasks: mergeProject2Items(current.tasks, incoming.tasks, new Set([...(current.deletedTaskIds || []), ...(incoming.deletedTaskIds || [])])),
+    backlog: mergeProject2Items(current.backlog, incoming.backlog, new Set([...(current.deletedBacklogIds || []), ...(incoming.deletedBacklogIds || [])])),
+    filters: { ...(current.filters || {}), ...(incoming.filters || {}) },
+    initialized: true,
+    updatedAt: now()
+  };
+}
+
+async function handleProject2(req, res) {
+  if (!requireEditor(req, res)) return;
+  const store = readStore() || { workspace: { sections: {} } };
+  store.workspace = store.workspace && typeof store.workspace === "object" ? store.workspace : { sections: {} };
+  store.workspace.sections = store.workspace.sections || {};
+
+  if (req.method === "GET") {
+    sendJson(res, 200, { project2: normalizeProject2Payload(store.workspace.sections.project2 || {}) });
+    return;
+  }
+
+  if (req.method === "PUT") {
+    try {
+      const payload = JSON.parse(await readBody(req) || "{}");
+      ensureDailyBackup();
+      store.workspace.sections.project2 = mergeProject2State(store.workspace.sections.project2 || {}, payload.project2 || payload);
+      store.workspace.updatedAt = now();
+      writeStore(store);
+      sendJson(res, 200, { project2: store.workspace.sections.project2, updatedAt: store.workspace.updatedAt });
+    } catch (error) {
+      sendJson(res, error.message === "BODY_TOO_LARGE" ? 413 : 400, { error: "Не удалось сохранить Доску проектов 2", detail: error.message });
+    }
+    return;
+  }
+
+  sendJson(res, 405, { error: "Method not allowed" });
 }
 
 async function handleSaveEmployeeReport(req, res) {
@@ -100,6 +277,72 @@ async function handleSaveEmployeeReport(req, res) {
         : "Не удалось сохранить задачу"
     });
   }
+}
+
+async function handleSendTelegram(req, res) {
+  if (!requireEditor(req, res)) return;
+
+  if (!TELEGRAM_BOT_TOKEN) {
+    sendJson(res, 503, { error: "TELEGRAM_BOT_TOKEN не задан в переменных Render" });
+    return;
+  }
+
+  try {
+    const payload = JSON.parse(await readBody(req) || "{}");
+    const chatId = normalizeTelegramTarget(payload.telegram || payload.chatId || TELEGRAM_DEFAULT_CHAT_ID);
+    const text = String(payload.text || "").trim();
+
+    if (!chatId) {
+      sendJson(res, 400, { error: "У исполнителя не указан Telegram chat_id или username" });
+      return;
+    }
+    if (!text) {
+      sendJson(res, 400, { error: "Пустой текст уведомления" });
+      return;
+    }
+
+    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: "HTML",
+        disable_web_page_preview: true
+      })
+    });
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok || result.ok === false) {
+      sendJson(res, 502, {
+        error: telegramErrorMessage(result.description || response.statusText || "Telegram rejected message")
+      });
+      return;
+    }
+
+    sendJson(res, 200, { ok: true });
+  } catch (error) {
+    sendJson(res, 400, { error: "Не удалось отправить уведомление в Telegram" });
+  }
+}
+
+function normalizeTelegramTarget(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const match = raw.match(/(?:https?:\/\/)?t\.me\/([^/?#]+)/i);
+  if (match) return `@${match[1].replace(/^@/, "")}`;
+  return raw;
+}
+
+function telegramErrorMessage(description) {
+  const message = String(description || "");
+  if (/chat not found/i.test(message)) {
+    return "Telegram не нашел этот чат. Для личных сообщений нужен chat_id: пользователь должен сначала написать вашему боту.";
+  }
+  if (/bot was blocked/i.test(message)) {
+    return "Пользователь заблокировал бота или не начинал с ним чат.";
+  }
+  return `Telegram не принял сообщение: ${message}`;
 }
 
 function readBody(req) {
