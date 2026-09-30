@@ -3,7 +3,7 @@
   "workspace": {
     "title": "konglomerat",
     "period": "2026",
-    "updatedAt": "2026-09-30T03:18:50.189Z",
+    "updatedAt": "2026-09-30T03:29:17.273Z",
     "sections": {
       "roadmap": {
         "updatedAt": "2026-07-02T10:35:16.687Z",
@@ -964,7 +964,7 @@
       },
       "project2": {
         "initialized": true,
-        "updatedAt": "2026-09-30T03:18:50.189Z",
+        "updatedAt": "2026-09-30T03:29:17.273Z",
         "people": [
           {
             "name": "Жакешова Людмила",
