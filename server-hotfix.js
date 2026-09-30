@@ -30,6 +30,10 @@ http.createServer = function createPatchedServer(listener) {
   return originalCreateServer(async (req, res) => {
     try {
       const pathname = new URL(req.url || "/", "http://localhost").pathname;
+      if (req.method === "GET" && pathname === "/app.js") {
+        servePatchedAppJs(res);
+        return;
+      }
       if (req.method === "PUT" && pathname === "/api/employees/report") {
         await handleSaveEmployeeReport(req, res);
         return;
@@ -54,6 +58,62 @@ http.createServer = function createPatchedServer(listener) {
 };
 
 require("./server.js");
+
+function patchProject2AppScript(source) {
+  const match = source.match(/const PROJECT2_HTML_BASE64 = '([^']+)'/);
+  if (!match) return source;
+
+  let html;
+  try {
+    html = Buffer.from(match[1], "base64").toString("utf8");
+  } catch (error) {
+    return source;
+  }
+
+  html = html.replace(
+    /function project2HasContent\(state\)\{[^}]*\}/,
+    "function project2HasContent(state){return Boolean(state&&state.initialized&&project2ItemCount(state)>0)}"
+  );
+
+  if (!html.includes("function project2DeleteCount(state)")) {
+    html = html.replace(
+      "function project2ItemCount(state){return (Array.isArray(state?.tasks)?state.tasks.length:0)+(Array.isArray(state?.backlog)?state.backlog.length:0)}",
+      "function project2ItemCount(state){return (Array.isArray(state?.tasks)?state.tasks.length:0)+(Array.isArray(state?.backlog)?state.backlog.length:0)}\n    function project2DeleteCount(state){return (Array.isArray(state?.deletedTaskIds)?state.deletedTaskIds.length:0)+(Array.isArray(state?.deletedBacklogIds)?state.deletedBacklogIds.length:0)}"
+    );
+  }
+
+  const oldLoad = "async function loadProject2State(){const localState=readLocalProject2State();applyProject2State(localState);try{const response=await fetch('/api/project2',{cache:'no-store'});if(!response.ok)return;const payload=await response.json();const shared=payload?.project2;if(project2HasContent(shared)){applyProject2State(shared);writeLocalProject2State(project2StateSnapshot());exportDoneTasksToEmployees();render();return}if(project2HasContent(localState)||tasks.length||backlog.length)saveProject2State(false)}catch(e){}}";
+  const newLoad = "async function loadProject2State(){try{const response=await fetch('/api/project2',{cache:'no-store'});if(response.ok){const payload=await response.json();const shared=payload?.project2;if(shared&&shared.initialized){applyProject2State(shared);writeLocalProject2State(project2StateSnapshot());exportDoneTasksToEmployees();render();return}}}catch(e){}const localState=readLocalProject2State();if(project2HasContent(localState)){applyProject2State(localState);exportDoneTasksToEmployees();render();}}";
+  html = html.replace(oldLoad, newLoad);
+
+  const oldSave = "async function saveProject2State(showMessage){try{const state=project2StateSnapshot();writeLocalProject2State(state);exportDoneTasksToEmployees();clearTimeout(project2SaveTimer);project2SaveTimer=setTimeout(()=>saveProject2ToServer(state,showMessage),showMessage?0:250);if(showMessage)alert('Сохранено');}catch(e){alert('Не удалось сохранить. Проверьте доступ к памяти браузера.')}}";
+  const newSave = "async function saveProject2State(showMessage){try{const state=project2StateSnapshot();if(project2ItemCount(state)===0&&project2DeleteCount(state)===0){if(showMessage)alert('Нет задач для сохранения');return}writeLocalProject2State(state);exportDoneTasksToEmployees();clearTimeout(project2SaveTimer);project2SaveTimer=setTimeout(()=>saveProject2ToServer(state,showMessage),showMessage?0:250);if(showMessage)alert('Сохранено');}catch(e){alert('Не удалось сохранить. Проверьте доступ к памяти браузера.')}}";
+  html = html.replace(oldSave, newSave);
+
+  const oldSaveServer = "async function saveProject2ToServer(state,showErrors=false){try{const response=await fetch('/api/project2',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({project2:state})});if(!response.ok&&showErrors)alert('Не удалось сохранить общую доску на сервер')}catch(e){if(showErrors)alert('Не удалось сохранить общую доску на сервер')}}";
+  const newSaveServer = "async function saveProject2ToServer(state,showErrors=false){try{const response=await fetch('/api/project2',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({project2:state})});if(!response.ok){if(showErrors)alert('Не удалось сохранить общую доску на сервер');return}const payload=await response.json().catch(()=>({}));const shared=payload?.project2;if(shared&&shared.initialized){applyProject2State(shared);writeLocalProject2State(project2StateSnapshot());exportDoneTasksToEmployees();render()}}catch(e){if(showErrors)alert('Не удалось сохранить общую доску на сервер')}}";
+  html = html.replace(oldSaveServer, newSaveServer);
+
+  const nextBase64 = Buffer.from(html, "utf8").toString("base64");
+  return source.replace(match[1], nextBase64);
+}
+
+function servePatchedAppJs(res) {
+  const appPath = path.join(ROOT, "public", "app.js");
+  fs.readFile(appPath, "utf8", (error, content) => {
+    if (error) {
+      res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("Not found");
+      return;
+    }
+    const patched = patchProject2AppScript(content);
+    res.writeHead(200, {
+      "Content-Type": "application/javascript; charset=utf-8",
+      "Cache-Control": "no-store"
+    });
+    res.end(patched);
+  });
+}
 
 function now() {
   return new Date().toISOString();
@@ -127,9 +187,20 @@ function mergeProject2Items(currentItems = [], incomingItems = [], deletedIds = 
   return Array.from(items.values()).sort((a, b) => (Number(a.number) || 0) - (Number(b.number) || 0));
 }
 
+function project2ItemCount(state = {}) {
+  return (Array.isArray(state.tasks) ? state.tasks.length : 0) + (Array.isArray(state.backlog) ? state.backlog.length : 0);
+}
+
+function project2DeleteCount(state = {}) {
+  return (Array.isArray(state.deletedTaskIds) ? state.deletedTaskIds.length : 0) + (Array.isArray(state.deletedBacklogIds) ? state.deletedBacklogIds.length : 0);
+}
+
 function mergeProject2State(currentState = {}, incomingState = {}) {
   const current = normalizeProject2Payload(currentState);
   const incoming = normalizeProject2Payload(incomingState);
+  if (project2ItemCount(current) > 0 && project2ItemCount(incoming) === 0 && project2DeleteCount(incoming) === 0) {
+    return current;
+  }
   return {
     ...current,
     ...incoming,
