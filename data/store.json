@@ -3,7 +3,7 @@
   "workspace": {
     "title": "konglomerat",
     "period": "2026",
-    "updatedAt": "2026-09-30T03:29:17.273Z",
+    "updatedAt": "2026-09-30T03:56:42.176Z",
     "sections": {
       "roadmap": {
         "updatedAt": "2026-07-02T10:35:16.687Z",
@@ -964,7 +964,7 @@
       },
       "project2": {
         "initialized": true,
-        "updatedAt": "2026-09-30T03:29:17.273Z",
+        "updatedAt": "2026-09-30T03:56:42.176Z",
         "people": [
           {
             "name": "Жакешова Людмила",
@@ -1046,7 +1046,8 @@
             "description": "Поля, описание, файлы, комментарии и история изменений.",
             "category": "Frontend",
             "comments": [],
-            "attachments": []
+            "attachments": [],
+            "updatedAt": "2026-09-30T03:56:42.172Z"
           },
           {
             "id": "t2",

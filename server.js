@@ -244,6 +244,19 @@ function project2ItemKey(item) {
   return String(item?.id || item?.number || item?.title || "");
 }
 
+function project2Timestamp(value) {
+  const time = Date.parse(value || "");
+  return Number.isFinite(time) ? time : 0;
+}
+
+function mergeProject2Item(currentItem, incomingItem) {
+  if (!currentItem) return incomingItem;
+  if (!incomingItem) return currentItem;
+  const currentTime = project2Timestamp(currentItem.updatedAt || currentItem.createdAt);
+  const incomingTime = project2Timestamp(incomingItem.updatedAt || incomingItem.createdAt);
+  return incomingTime >= currentTime ? { ...currentItem, ...incomingItem } : { ...incomingItem, ...currentItem };
+}
+
 function mergeProject2Items(currentItems = [], incomingItems = [], deletedIds = new Set()) {
   const items = new Map();
   (Array.isArray(currentItems) ? currentItems : []).forEach(item => {
@@ -252,7 +265,7 @@ function mergeProject2Items(currentItems = [], incomingItems = [], deletedIds = 
   });
   (Array.isArray(incomingItems) ? incomingItems : []).forEach(item => {
     const key = project2ItemKey(item);
-    if (key && !deletedIds.has(key)) items.set(key, { ...(items.get(key) || {}), ...item });
+    if (key && !deletedIds.has(key)) items.set(key, mergeProject2Item(items.get(key), item));
   });
   return Array.from(items.values()).sort((a, b) => (Number(a.number) || 0) - (Number(b.number) || 0));
 }
