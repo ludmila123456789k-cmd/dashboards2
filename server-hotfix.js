@@ -38,6 +38,10 @@ http.createServer = function createPatchedServer(listener) {
         await handleSendTelegram(req, res);
         return;
       }
+      if (pathname === "/api/project2") {
+        await handleProject2(req, res);
+        return;
+      }
     } catch (error) {
       sendJson(res, 500, { error: "Не удалось сохранить задачу" });
       return;
@@ -50,6 +54,10 @@ http.createServer = function createPatchedServer(listener) {
 };
 
 require("./server.js");
+
+function now() {
+  return new Date().toISOString();
+}
 
 function resolveDataDir() {
   if (process.env.DATA_DIR) return path.resolve(process.env.DATA_DIR);
@@ -71,6 +79,85 @@ function loadEnvFile(filePath) {
     }
     if (key && process.env[key] === undefined) process.env[key] = value;
   }
+}
+
+
+function normalizeProject2Payload(value) {
+  const source = value && typeof value === "object" ? value : {};
+  return {
+    initialized: Boolean(source.initialized || Array.isArray(source.tasks) || Array.isArray(source.backlog)),
+    updatedAt: source.updatedAt || now(),
+    people: Array.isArray(source.people) ? source.people : [],
+    categories: Array.isArray(source.categories) ? source.categories : [],
+    tasks: Array.isArray(source.tasks) ? source.tasks : [],
+    backlog: Array.isArray(source.backlog) ? source.backlog : [],
+    deletedTaskIds: Array.isArray(source.deletedTaskIds) ? source.deletedTaskIds.filter(Boolean).slice(-1000) : [],
+    deletedBacklogIds: Array.isArray(source.deletedBacklogIds) ? source.deletedBacklogIds.filter(Boolean).slice(-1000) : [],
+    filters: source.filters && typeof source.filters === "object" ? source.filters : {}
+  };
+}
+
+function project2ItemKey(item) {
+  return String(item?.id || item?.number || item?.title || "");
+}
+
+function mergeProject2Items(currentItems = [], incomingItems = [], deletedIds = new Set()) {
+  const items = new Map();
+  (Array.isArray(currentItems) ? currentItems : []).forEach(item => {
+    const key = project2ItemKey(item);
+    if (key && !deletedIds.has(key)) items.set(key, item);
+  });
+  (Array.isArray(incomingItems) ? incomingItems : []).forEach(item => {
+    const key = project2ItemKey(item);
+    if (key && !deletedIds.has(key)) items.set(key, { ...(items.get(key) || {}), ...item });
+  });
+  return Array.from(items.values()).sort((a, b) => (Number(a.number) || 0) - (Number(b.number) || 0));
+}
+
+function mergeProject2State(currentState = {}, incomingState = {}) {
+  const current = normalizeProject2Payload(currentState);
+  const incoming = normalizeProject2Payload(incomingState);
+  return {
+    ...current,
+    ...incoming,
+    people: incoming.people.length ? incoming.people : current.people,
+    categories: incoming.categories.length ? incoming.categories : current.categories,
+    deletedTaskIds: Array.from(new Set([...(current.deletedTaskIds || []), ...(incoming.deletedTaskIds || [])])).slice(-1000),
+    deletedBacklogIds: Array.from(new Set([...(current.deletedBacklogIds || []), ...(incoming.deletedBacklogIds || [])])).slice(-1000),
+    tasks: mergeProject2Items(current.tasks, incoming.tasks, new Set([...(current.deletedTaskIds || []), ...(incoming.deletedTaskIds || [])])),
+    backlog: mergeProject2Items(current.backlog, incoming.backlog, new Set([...(current.deletedBacklogIds || []), ...(incoming.deletedBacklogIds || [])])),
+    filters: { ...(current.filters || {}), ...(incoming.filters || {}) },
+    initialized: true,
+    updatedAt: now()
+  };
+}
+
+async function handleProject2(req, res) {
+  if (!requireEditor(req, res)) return;
+  const store = readStore() || { workspace: { sections: {} } };
+  store.workspace = store.workspace && typeof store.workspace === "object" ? store.workspace : { sections: {} };
+  store.workspace.sections = store.workspace.sections || {};
+
+  if (req.method === "GET") {
+    sendJson(res, 200, { project2: normalizeProject2Payload(store.workspace.sections.project2 || {}) });
+    return;
+  }
+
+  if (req.method === "PUT") {
+    try {
+      const payload = JSON.parse(await readBody(req) || "{}");
+      ensureDailyBackup();
+      store.workspace.sections.project2 = mergeProject2State(store.workspace.sections.project2 || {}, payload.project2 || payload);
+      store.workspace.updatedAt = now();
+      writeStore(store);
+      sendJson(res, 200, { project2: store.workspace.sections.project2, updatedAt: store.workspace.updatedAt });
+    } catch (error) {
+      sendJson(res, error.message === "BODY_TOO_LARGE" ? 413 : 400, { error: "Не удалось сохранить Доску проектов 2", detail: error.message });
+    }
+    return;
+  }
+
+  sendJson(res, 405, { error: "Method not allowed" });
 }
 
 async function handleSaveEmployeeReport(req, res) {

@@ -224,6 +224,57 @@ function writeStore(store) {
   fs.writeFileSync(STORE_FILE, JSON.stringify(store, null, 2), "utf8");
 }
 
+
+function normalizeProject2Payload(value) {
+  const source = value && typeof value === "object" ? value : {};
+  return {
+    initialized: Boolean(source.initialized || Array.isArray(source.tasks) || Array.isArray(source.backlog)),
+    updatedAt: source.updatedAt || now(),
+    people: Array.isArray(source.people) ? source.people : [],
+    categories: Array.isArray(source.categories) ? source.categories : [],
+    tasks: Array.isArray(source.tasks) ? source.tasks : [],
+    backlog: Array.isArray(source.backlog) ? source.backlog : [],
+    deletedTaskIds: Array.isArray(source.deletedTaskIds) ? source.deletedTaskIds.filter(Boolean).slice(-1000) : [],
+    deletedBacklogIds: Array.isArray(source.deletedBacklogIds) ? source.deletedBacklogIds.filter(Boolean).slice(-1000) : [],
+    filters: source.filters && typeof source.filters === "object" ? source.filters : {}
+  };
+}
+
+function project2ItemKey(item) {
+  return String(item?.id || item?.number || item?.title || "");
+}
+
+function mergeProject2Items(currentItems = [], incomingItems = [], deletedIds = new Set()) {
+  const items = new Map();
+  (Array.isArray(currentItems) ? currentItems : []).forEach(item => {
+    const key = project2ItemKey(item);
+    if (key && !deletedIds.has(key)) items.set(key, item);
+  });
+  (Array.isArray(incomingItems) ? incomingItems : []).forEach(item => {
+    const key = project2ItemKey(item);
+    if (key && !deletedIds.has(key)) items.set(key, { ...(items.get(key) || {}), ...item });
+  });
+  return Array.from(items.values()).sort((a, b) => (Number(a.number) || 0) - (Number(b.number) || 0));
+}
+
+function mergeProject2State(currentState = {}, incomingState = {}) {
+  const current = normalizeProject2Payload(currentState);
+  const incoming = normalizeProject2Payload(incomingState);
+  return {
+    ...current,
+    ...incoming,
+    people: incoming.people.length ? incoming.people : current.people,
+    categories: incoming.categories.length ? incoming.categories : current.categories,
+    deletedTaskIds: Array.from(new Set([...(current.deletedTaskIds || []), ...(incoming.deletedTaskIds || [])])).slice(-1000),
+    deletedBacklogIds: Array.from(new Set([...(current.deletedBacklogIds || []), ...(incoming.deletedBacklogIds || [])])).slice(-1000),
+    tasks: mergeProject2Items(current.tasks, incoming.tasks, new Set([...(current.deletedTaskIds || []), ...(incoming.deletedTaskIds || [])])),
+    backlog: mergeProject2Items(current.backlog, incoming.backlog, new Set([...(current.deletedBacklogIds || []), ...(incoming.deletedBacklogIds || [])])),
+    filters: { ...(current.filters || {}), ...(incoming.filters || {}) },
+    initialized: true,
+    updatedAt: now()
+  };
+}
+
 function mergeWorkspaceForSave(currentWorkspace, incomingWorkspace) {
   const current = currentWorkspace && typeof currentWorkspace === "object" ? currentWorkspace : {};
   const incoming = incomingWorkspace && typeof incomingWorkspace === "object" ? incomingWorkspace : {};

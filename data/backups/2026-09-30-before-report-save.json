@@ -3,7 +3,7 @@
   "workspace": {
     "title": "konglomerat",
     "period": "2026",
-    "updatedAt": "2026-09-30T03:18:50.189Z",
+    "updatedAt": "2026-09-29T11:58:34.458Z",
     "sections": {
       "roadmap": {
         "updatedAt": "2026-07-02T10:35:16.687Z",
@@ -964,7 +964,6 @@
       },
       "project2": {
         "initialized": true,
-        "updatedAt": "2026-09-30T03:18:50.189Z",
         "people": [
           {
             "name": "Жакешова Людмила",
@@ -1163,10 +1162,6 @@
             "attachments": []
           }
         ],
-        "deletedTaskIds": [
-          "sync-test-1790738193095"
-        ],
-        "deletedBacklogIds": [],
         "filters": {
           "search": "",
           "status": "",
@@ -1175,7 +1170,8 @@
           "category": "",
           "overdue": false,
           "month": "2026-09"
-        }
+        },
+        "updatedAt": "2026-09-29T11:58:34.096Z"
       }
     }
   }
