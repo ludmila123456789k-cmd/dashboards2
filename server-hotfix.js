@@ -116,6 +116,33 @@ function patchProject2AppScript(source) {
     "function moveToKanban(id){const i=backlog.findIndex(x=>x.id===id);if(i>-1){tasks.push(touchProject2Item(backlog.splice(i,1)[0]));persistProject2();render()}}function moveToBacklog(id){const i=tasks.findIndex(x=>x.id===id);if(i>-1){backlog.push(touchProject2Item(tasks.splice(i,1)[0]));persistProject2();render()}}"
   );
 
+  if (!html.includes("let deletedPersonNames=[]")) {
+    html = html.replace(
+      "let deletedTaskIds=[];let deletedBacklogIds=[];",
+      "let deletedTaskIds=[];let deletedBacklogIds=[];let deletedPersonNames=[];"
+    );
+  }
+
+  html = html.replace(
+    "function project2StateSnapshot(){return{people,categories,tasks,backlog,filters,deletedTaskIds,deletedBacklogIds,initialized:true,updatedAt:new Date().toISOString()}}",
+    "function project2StateSnapshot(){return{people,categories,tasks,backlog,filters,deletedTaskIds,deletedBacklogIds,deletedPersonNames,initialized:true,updatedAt:new Date().toISOString()}}"
+  );
+
+  html = html.replace(
+    "function mergeProject2States(base={},extra={}){const taskDeletes=Array.from(new Set([...(base.deletedTaskIds||[]),...(extra.deletedTaskIds||[])]));const backlogDeletes=Array.from(new Set([...(base.deletedBacklogIds||[]),...(extra.deletedBacklogIds||[])]));return{...base,...extra,people:Array.isArray(extra.people)&&extra.people.length?extra.people:base.people,categories:Array.isArray(extra.categories)&&extra.categories.length?extra.categories:base.categories,deletedTaskIds:taskDeletes,deletedBacklogIds:backlogDeletes,tasks:mergeProject2List(base.tasks,extra.tasks,taskDeletes),backlog:mergeProject2List(base.backlog,extra.backlog,backlogDeletes),filters:{...(base.filters||{}),...(extra.filters||{})},initialized:true,updatedAt:new Date().toISOString()}}",
+    "function mergeProject2States(base={},extra={}){const taskDeletes=Array.from(new Set([...(base.deletedTaskIds||[]),...(extra.deletedTaskIds||[])]));const backlogDeletes=Array.from(new Set([...(base.deletedBacklogIds||[]),...(extra.deletedBacklogIds||[])]));const personDeletes=Array.from(new Set([...(base.deletedPersonNames||[]),...(extra.deletedPersonNames||[])]));const peopleSource=Array.isArray(extra.people)?extra.people:base.people;return{...base,...extra,people:(Array.isArray(peopleSource)?peopleSource:[]).filter(p=>!personDeletes.includes(String(p?.name||''))),categories:Array.isArray(extra.categories)&&extra.categories.length?extra.categories:base.categories,deletedTaskIds:taskDeletes,deletedBacklogIds:backlogDeletes,deletedPersonNames:personDeletes,tasks:mergeProject2List(base.tasks,extra.tasks,taskDeletes),backlog:mergeProject2List(base.backlog,extra.backlog,backlogDeletes),filters:{...(base.filters||{}),...(extra.filters||{})},initialized:true,updatedAt:new Date().toISOString()}}"
+  );
+
+  html = html.replace(
+    "function applyProject2State(value){const saved=normalizeProject2State(value);if(saved.filters&&typeof saved.filters==='object')filters={...filters,...saved.filters};if(Array.isArray(saved.people)){people.splice(0,people.length,...saved.people.map((p,i)=>({...people[i],...p})));}if(Array.isArray(saved.categories)&&saved.categories.length){categories.splice(0,categories.length,...saved.categories);}",
+    "function applyProject2State(value){const saved=normalizeProject2State(value);if(saved.filters&&typeof saved.filters==='object')filters={...filters,...saved.filters};if(Array.isArray(saved.deletedPersonNames))deletedPersonNames=Array.from(new Set(saved.deletedPersonNames.filter(Boolean))).slice(-1000);if(Array.isArray(saved.people)){people.splice(0,people.length,...saved.people.filter(p=>!deletedPersonNames.includes(String(p?.name||''))).map((p,i)=>({...people[i],...p})));}if(Array.isArray(saved.categories)&&saved.categories.length){categories.splice(0,categories.length,...saved.categories);}"
+  );
+
+  html = html.replace(
+    "function addPerson(){people.push({name:'Новый исполнитель',telegram:''});render()}function updatePerson(i,name){const old=people[i].name;people[i].name=name;if(reportEmployee===old)reportEmployee=name;tasks.forEach(t=>{if(t.assignee===old)t.assignee=name});backlog.forEach(t=>{if(t.assignee===old)t.assignee=name})}function updateTelegram(i,value){people[i].telegram=value}function deletePerson(i){if(confirm('Удалить пользователя навсегда?')){const old=people[i].name;people.splice(i,1);tasks.forEach(t=>{if(t.assignee===old)t.assignee=''});backlog.forEach(t=>{if(t.assignee===old)t.assignee=''});if(reportEmployee===old)reportEmployee=people[0]?.name||'';render()}}",
+    "function addPerson(){people.push({name:'Новый исполнитель',telegram:''});persistProject2();render()}function updatePerson(i,name){const old=people[i].name;people[i].name=name;if(reportEmployee===old)reportEmployee=name;tasks.forEach(t=>{if(t.assignee===old){t.assignee=name;touchProject2Item(t)}});backlog.forEach(t=>{if(t.assignee===old){t.assignee=name;touchProject2Item(t)}});persistProject2()}function updateTelegram(i,value){people[i].telegram=value;persistProject2()}function deletePerson(i){if(confirm('Удалить пользователя навсегда?')){const old=people[i].name;deletedPersonNames=Array.from(new Set([...deletedPersonNames,old])).slice(-1000);people.splice(i,1);tasks.forEach(t=>{if(t.assignee===old){t.assignee='';touchProject2Item(t)}});backlog.forEach(t=>{if(t.assignee===old){t.assignee='';touchProject2Item(t)}});if(reportEmployee===old)reportEmployee=people[0]?.name||'';persistProject2();render()}}"
+  );
+
   const nextBase64 = Buffer.from(html, "utf8").toString("base64");
   return source.replace(match[1], nextBase64);
 }
@@ -156,7 +183,7 @@ function loadEnvFile(filePath) {
     if (index === -1) continue;
     const key = trimmed.slice(0, index).trim();
     let value = trimmed.slice(index + 1).trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+    if ((value.startsWith('\"') && value.endsWith('\"')) || (value.startsWith("'") && value.endsWith("'"))) {
       value = value.slice(1, -1);
     }
     if (key && process.env[key] === undefined) process.env[key] = value;
@@ -193,6 +220,7 @@ function normalizeProject2Payload(value) {
     backlog: Array.isArray(source.backlog) ? source.backlog.filter(item => !isProject2DemoTask(item)) : [],
     deletedTaskIds: Array.isArray(source.deletedTaskIds) ? source.deletedTaskIds.filter(Boolean).slice(-1000) : [],
     deletedBacklogIds: Array.isArray(source.deletedBacklogIds) ? source.deletedBacklogIds.filter(Boolean).slice(-1000) : [],
+    deletedPersonNames: Array.isArray(source.deletedPersonNames) ? source.deletedPersonNames.filter(Boolean).slice(-1000) : [],
     filters: source.filters && typeof source.filters === "object" ? source.filters : {}
   };
 }
@@ -241,13 +269,16 @@ function mergeProject2State(currentState = {}, incomingState = {}) {
   if (project2ItemCount(current) > 0 && project2ItemCount(incoming) === 0 && project2DeleteCount(incoming) === 0) {
     return current;
   }
+  const deletedPersonNames = Array.from(new Set([...(current.deletedPersonNames || []), ...(incoming.deletedPersonNames || [])])).slice(-1000);
+  const peopleSource = Array.isArray(incoming.people) ? incoming.people : current.people;
   return {
     ...current,
     ...incoming,
-    people: incoming.people.length ? incoming.people : current.people,
+    people: (Array.isArray(peopleSource) ? peopleSource : []).filter(person => !deletedPersonNames.includes(String(person?.name || ""))),
     categories: incoming.categories.length ? incoming.categories : current.categories,
     deletedTaskIds: Array.from(new Set([...(current.deletedTaskIds || []), ...(incoming.deletedTaskIds || [])])).slice(-1000),
     deletedBacklogIds: Array.from(new Set([...(current.deletedBacklogIds || []), ...(incoming.deletedBacklogIds || [])])).slice(-1000),
+    deletedPersonNames,
     tasks: mergeProject2Items(current.tasks, incoming.tasks, new Set([...(current.deletedTaskIds || []), ...(incoming.deletedTaskIds || [])])),
     backlog: mergeProject2Items(current.backlog, incoming.backlog, new Set([...(current.deletedBacklogIds || []), ...(incoming.deletedBacklogIds || [])])),
     filters: { ...(current.filters || {}), ...(incoming.filters || {}) },
