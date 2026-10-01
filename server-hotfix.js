@@ -72,15 +72,23 @@ function patchProject2AppScript(source) {
 
   html = html.replace(
     /function project2HasContent\(state\)\{[^}]*\}/,
-    "function project2HasContent(state){return Boolean(state&&state.initialized&&project2ItemCount(state)>0)}"
+    "function project2HasContent(state){return Boolean(state&&state.initialized&&(project2ItemCount(state)>0||(Array.isArray(state?.people)&&state.people.length>0)))}"
   );
 
   if (!html.includes("function project2DeleteCount(state)")) {
     html = html.replace(
       "function project2ItemCount(state){return (Array.isArray(state?.tasks)?state.tasks.length:0)+(Array.isArray(state?.backlog)?state.backlog.length:0)}",
-      "function project2ItemCount(state){return (Array.isArray(state?.tasks)?state.tasks.length:0)+(Array.isArray(state?.backlog)?state.backlog.length:0)}\n    function project2DeleteCount(state){return (Array.isArray(state?.deletedTaskIds)?state.deletedTaskIds.length:0)+(Array.isArray(state?.deletedBacklogIds)?state.deletedBacklogIds.length:0)}"
+      "function project2ItemCount(state){return (Array.isArray(state?.tasks)?state.tasks.length:0)+(Array.isArray(state?.backlog)?state.backlog.length:0)+(Array.isArray(state?.people)?state.people.length:0)}\n    function project2DeleteCount(state){return (Array.isArray(state?.deletedTaskIds)?state.deletedTaskIds.length:0)+(Array.isArray(state?.deletedBacklogIds)?state.deletedBacklogIds.length:0)+(Array.isArray(state?.deletedPersonNames)?state.deletedPersonNames.length:0)}"
     );
   }
+  html = html.replace(
+    /function project2ItemCount\(state\)\{return \(Array\.isArray\(state\?\.tasks\)\?state\.tasks\.length:0\)\+\(Array\.isArray\(state\?\.backlog\)\?state\.backlog\.length:0\)(?:\+\(Array\.isArray\(state\?\.people\)\?state\.people\.length:0\))?\}/,
+    "function project2ItemCount(state){return (Array.isArray(state?.tasks)?state.tasks.length:0)+(Array.isArray(state?.backlog)?state.backlog.length:0)+(Array.isArray(state?.people)?state.people.length:0)}"
+  );
+  html = html.replace(
+    /function project2DeleteCount\(state\)\{return \(Array\.isArray\(state\?\.deletedTaskIds\)\?state\.deletedTaskIds\.length:0\)\+\(Array\.isArray\(state\?\.deletedBacklogIds\)\?state\.deletedBacklogIds\.length:0\)(?:\+\(Array\.isArray\(state\?\.deletedPersonNames\)\?state\.deletedPersonNames\.length:0\))?\}/,
+    "function project2DeleteCount(state){return (Array.isArray(state?.deletedTaskIds)?state.deletedTaskIds.length:0)+(Array.isArray(state?.deletedBacklogIds)?state.deletedBacklogIds.length:0)+(Array.isArray(state?.deletedPersonNames)?state.deletedPersonNames.length:0)}"
+  );
 
   const oldLoad = "async function loadProject2State(){const localState=readLocalProject2State();applyProject2State(localState);try{const response=await fetch('/api/project2',{cache:'no-store'});if(!response.ok)return;const payload=await response.json();const shared=payload?.project2;if(project2HasContent(shared)){applyProject2State(shared);writeLocalProject2State(project2StateSnapshot());exportDoneTasksToEmployees();render();return}if(project2HasContent(localState)||tasks.length||backlog.length)saveProject2State(false)}catch(e){}}";
   const newLoad = "async function loadProject2State(){try{const response=await fetch('/api/project2',{cache:'no-store'});if(response.ok){const payload=await response.json();const shared=payload?.project2;if(shared&&shared.initialized){applyProject2State(shared);writeLocalProject2State(project2StateSnapshot());exportDoneTasksToEmployees();render();return}}}catch(e){}const localState=readLocalProject2State();if(project2HasContent(localState)){applyProject2State(localState);exportDoneTasksToEmployees();render();}}";
@@ -140,7 +148,7 @@ function patchProject2AppScript(source) {
 
   html = html.replace(
     "function addPerson(){people.push({name:'Новый исполнитель',telegram:''});render()}function updatePerson(i,name){const old=people[i].name;people[i].name=name;if(reportEmployee===old)reportEmployee=name;tasks.forEach(t=>{if(t.assignee===old)t.assignee=name});backlog.forEach(t=>{if(t.assignee===old)t.assignee=name})}function updateTelegram(i,value){people[i].telegram=value}function deletePerson(i){if(confirm('Удалить пользователя навсегда?')){const old=people[i].name;people.splice(i,1);tasks.forEach(t=>{if(t.assignee===old)t.assignee=''});backlog.forEach(t=>{if(t.assignee===old)t.assignee=''});if(reportEmployee===old)reportEmployee=people[0]?.name||'';render()}}",
-    "function addPerson(){people.push({name:'Новый исполнитель',telegram:''});persistProject2();render()}function updatePerson(i,name){const old=people[i].name;people[i].name=name;if(reportEmployee===old)reportEmployee=name;tasks.forEach(t=>{if(t.assignee===old){t.assignee=name;touchProject2Item(t)}});backlog.forEach(t=>{if(t.assignee===old){t.assignee=name;touchProject2Item(t)}});persistProject2()}function updateTelegram(i,value){people[i].telegram=value;persistProject2()}function deletePerson(i){if(confirm('Удалить пользователя навсегда?')){const old=people[i].name;deletedPersonNames=Array.from(new Set([...deletedPersonNames,old])).slice(-1000);people.splice(i,1);tasks.forEach(t=>{if(t.assignee===old){t.assignee='';touchProject2Item(t)}});backlog.forEach(t=>{if(t.assignee===old){t.assignee='';touchProject2Item(t)}});if(reportEmployee===old)reportEmployee=people[0]?.name||'';persistProject2();render()}}"
+    "function addPerson(){people.push({name:'Новый исполнитель',telegram:''});persistProject2();render()}function updatePerson(i,name){const old=people[i].name;people[i].name=name;deletedPersonNames=deletedPersonNames.filter(item=>item!==name);if(reportEmployee===old)reportEmployee=name;tasks.forEach(t=>{if(t.assignee===old){t.assignee=name;touchProject2Item(t)}});backlog.forEach(t=>{if(t.assignee===old){t.assignee=name;touchProject2Item(t)}});persistProject2()}function updateTelegram(i,value){people[i].telegram=value;persistProject2()}function deletePerson(i){if(confirm('Удалить пользователя навсегда?')){const old=people[i].name;deletedPersonNames=Array.from(new Set([...deletedPersonNames,old])).slice(-1000);people.splice(i,1);tasks.forEach(t=>{if(t.assignee===old){t.assignee='';touchProject2Item(t)}});backlog.forEach(t=>{if(t.assignee===old){t.assignee='';touchProject2Item(t)}});if(reportEmployee===old)reportEmployee=people[0]?.name||'';persistProject2();render()}}"
   );
 
   const nextBase64 = Buffer.from(html, "utf8").toString("base64");
@@ -261,11 +269,15 @@ function mergeProject2Items(currentItems = [], incomingItems = [], deletedIds = 
 }
 
 function project2ItemCount(state = {}) {
-  return (Array.isArray(state.tasks) ? state.tasks.length : 0) + (Array.isArray(state.backlog) ? state.backlog.length : 0);
+  return (Array.isArray(state.tasks) ? state.tasks.length : 0)
+    + (Array.isArray(state.backlog) ? state.backlog.length : 0)
+    + (Array.isArray(state.people) ? state.people.length : 0);
 }
 
 function project2DeleteCount(state = {}) {
-  return (Array.isArray(state.deletedTaskIds) ? state.deletedTaskIds.length : 0) + (Array.isArray(state.deletedBacklogIds) ? state.deletedBacklogIds.length : 0);
+  return (Array.isArray(state.deletedTaskIds) ? state.deletedTaskIds.length : 0)
+    + (Array.isArray(state.deletedBacklogIds) ? state.deletedBacklogIds.length : 0)
+    + (Array.isArray(state.deletedPersonNames) ? state.deletedPersonNames.length : 0);
 }
 
 function mergeProject2State(currentState = {}, incomingState = {}) {
