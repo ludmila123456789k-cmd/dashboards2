@@ -70,6 +70,12 @@ function patchProject2AppScript(source) {
     return source;
   }
 
+  html = html.replaceAll("Доска проектов 2", "Доска проектов");
+  html = html.replace(
+    "</style>",
+    ".board{overflow:visible!important}.content,#root{overflow:visible!important;height:auto!important;max-height:none!important}.app{height:auto!important;min-height:100vh}html,body{overflow-y:auto!important}</style>"
+  );
+
   html = html.replace(
     /function project2HasContent\(state\)\{[^}]*\}/,
     "function project2HasContent(state){return Boolean(state&&state.initialized&&(project2ItemCount(state)>0||(Array.isArray(state?.people)&&state.people.length>0)))}"
@@ -324,7 +330,7 @@ async function handleProject2(req, res) {
       writeStore(store);
       sendJson(res, 200, { project2: store.workspace.sections.project2, updatedAt: store.workspace.updatedAt });
     } catch (error) {
-      sendJson(res, error.message === "BODY_TOO_LARGE" ? 413 : 400, { error: "Не удалось сохранить Доску проектов 2", detail: error.message });
+      sendJson(res, error.message === "BODY_TOO_LARGE" ? 413 : 400, { error: "Не удалось сохранить Доску проектов", detail: error.message });
     }
     return;
   }
