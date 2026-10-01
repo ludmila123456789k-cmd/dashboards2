@@ -211,16 +211,21 @@ function isProject2DemoTask(item) {
 
 function normalizeProject2Payload(value) {
   const source = value && typeof value === "object" ? value : {};
+  const deletedPersonNames = Array.isArray(source.deletedPersonNames)
+    ? source.deletedPersonNames.filter(Boolean).slice(-1000)
+    : [];
   return {
     initialized: Boolean(source.initialized || Array.isArray(source.tasks) || Array.isArray(source.backlog)),
     updatedAt: source.updatedAt || now(),
-    people: Array.isArray(source.people) ? source.people : [],
+    people: Array.isArray(source.people)
+      ? source.people.filter(person => !deletedPersonNames.includes(String(person?.name || "")))
+      : [],
     categories: Array.isArray(source.categories) ? source.categories : [],
     tasks: Array.isArray(source.tasks) ? source.tasks.filter(item => !isProject2DemoTask(item)) : [],
     backlog: Array.isArray(source.backlog) ? source.backlog.filter(item => !isProject2DemoTask(item)) : [],
     deletedTaskIds: Array.isArray(source.deletedTaskIds) ? source.deletedTaskIds.filter(Boolean).slice(-1000) : [],
     deletedBacklogIds: Array.isArray(source.deletedBacklogIds) ? source.deletedBacklogIds.filter(Boolean).slice(-1000) : [],
-    deletedPersonNames: Array.isArray(source.deletedPersonNames) ? source.deletedPersonNames.filter(Boolean).slice(-1000) : [],
+    deletedPersonNames,
     filters: source.filters && typeof source.filters === "object" ? source.filters : {}
   };
 }
