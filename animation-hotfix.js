@@ -1,5 +1,4 @@
 const fs = require("fs");
-const path = require("path");
 
 const originalReadFile = fs.readFile.bind(fs);
 
@@ -34,20 +33,20 @@ fs.readFile = function patchedReadFile(filePath, options, callback) {
       text = next;
     }
 
-    if (!changed) {
-      done(null, data);
-      return;
-    }
-
-    done(null, isText ? text : Buffer.from(text, "utf8"));
+    done(null, changed ? (isText ? text : Buffer.from(text, "utf8")) : data);
   });
 };
 
 function patchEmployeeEventApp(source) {
-  return String(source || "").replace(
-    "container.innerHTML = `<div class=\"employee-lottie-fallback\">Анимация</div>`;",
-    "container.innerHTML = `<div class=\"employee-lottie-fallback\" aria-hidden=\"true\"><span></span><span></span><span></span><span></span><span></span></div>`;"
-  );
+  return String(source || "")
+    .replaceAll("Осенняя анимация", "Осень")
+    .replaceAll("Зимняя анимация", "Зима")
+    .replaceAll("Весенняя анимация", "Весна")
+    .replaceAll("Летняя анимация", "Лето")
+    .replace(
+      "container.innerHTML = `<div class=\"employee-lottie-fallback\">Анимация</div>`;",
+      "container.innerHTML = `<div class=\"employee-lottie-fallback\" aria-hidden=\"true\"><span></span><span></span><span></span><span></span><span></span></div>`;"
+    );
 }
 
 function patchEmployeeEventStyles(source) {
