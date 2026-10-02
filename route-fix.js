@@ -12,6 +12,44 @@ function patchOuterAppScript(source) {
     .replace(/localStorage\.setItem\(ACTIVE_SECTION_KEY, activeSection\);/g, 'localStorage.setItem(ACTIVE_SECTION_KEY, activeSection === "board" ? "project2" : activeSection);');
 }
 
+function patchEmployeeEvents(source) {
+  let result = source;
+  result = result.replace(
+    /function employeeEventClosed\(day, type\) \{[\s\S]*?\n\}/,
+    'function employeeEventClosed(day, type) { return false; }'
+  );
+  result = result.replace(
+    /function renderBirthdayEvent\(birthday, day, type\) \{[\s\S]*?\n\}/,
+    'function renderBirthdayEvent(birthday, day, type) {\n  return `<aside class="employee-event employee-event-birthday">${employeeEventCloseButton(day, type)}<div class="employee-event-picture"><img src="/event-assets/${escapeAttribute(birthday.image)}" alt="${escapeAttribute(birthday.text)}"><strong>${escapeHtml(birthday.text)}</strong></div></aside>`;\n}'
+  );
+  result = result.replace(
+    /function renderLottieEvent\(kind, label, day, fileName\) \{[\s\S]*?\n\}/,
+    'function renderLottieEvent(kind, label, day, fileName) {\n  return `<aside class="employee-event employee-event-${kind}">${employeeEventCloseButton(day, kind)}<div class="employee-lottie" data-lottie-src="/event-assets/${escapeAttribute(fileName)}" aria-label="${escapeAttribute(label)}"></div><div class="employee-lottie-caption">${escapeHtml(label)}</div></aside>`;\n}'
+  );
+  const style = `
+const employeeEventStyle = document.createElement("style");
+employeeEventStyle.textContent = ` + JSON.stringify(`
+.employee-detail-with-event{display:grid!important;grid-template-columns:minmax(0,1fr) 300px!important;gap:16px!important;align-items:start!important;overflow:visible!important}
+.employee-main-column{min-width:0!important}
+.employee-event{position:sticky!important;top:18px!important;display:block!important;min-height:300px!important;border:1px solid #dbe3ef!important;border-radius:14px!important;background:#fff!important;box-shadow:0 14px 32px rgba(15,23,42,.08)!important;overflow:hidden!important;z-index:2!important}
+.employee-lottie{width:100%!important;height:300px!important;background:#fff!important}
+.employee-lottie svg{width:100%!important;height:100%!important;display:block!important}
+.employee-lottie-caption{position:absolute!important;left:12px!important;right:12px!important;bottom:12px!important;padding:8px 10px!important;border-radius:999px!important;background:rgba(255,255,255,.86)!important;font-weight:800!important;text-align:center!important;color:#0f172a!important}
+.employee-event-picture{min-height:300px!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:10px!important;padding:14px!important;text-align:center!important}
+.employee-event-picture img{max-width:100%!important;max-height:240px!important;object-fit:contain!important;display:block!important}
+.employee-event-picture strong{font-size:18px!important;line-height:1.2!important;color:#0f172a!important}
+.employee-event-close{position:absolute!important;right:8px!important;top:8px!important;width:28px!important;height:28px!important;border-radius:999px!important;border:1px solid #dbe3ef!important;background:#fff!important;color:#64748b!important;z-index:3!important;cursor:pointer!important}
+@media(max-width:1100px){.employee-detail-with-event{grid-template-columns:1fr!important}.employee-event{position:relative!important;top:auto!important;order:-1!important}.employee-lottie{height:240px!important}}
+`) + `;
+document.head.appendChild(employeeEventStyle);
+try { Object.keys(localStorage).filter(key => key.startsWith("konglomeratEmployeeEventClosed:")).forEach(key => localStorage.removeItem(key)); } catch (error) {}
+`;
+  if (!result.includes('employeeEventStyle.textContent')) {
+    result = result.replace('window.addEventListener("hashchange", handleRouteChange);', `window.addEventListener("hashchange", handleRouteChange);\n${style}`);
+  }
+  return result;
+}
+
 function patchProject2Html(source) {
   if (typeof source !== "string") return source;
   const match = source.match(/const PROJECT2_HTML_BASE64 = '([^']+)'/);
@@ -46,7 +84,7 @@ function patchProject2Html(source) {
 }
 
 function patchAppScript(source) {
-  return patchProject2Html(patchOuterAppScript(source));
+  return patchEmployeeEvents(patchProject2Html(patchOuterAppScript(source)));
 }
 
 async function fetchWorkingAppScript() {
