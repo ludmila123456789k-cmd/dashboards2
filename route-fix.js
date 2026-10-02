@@ -1,7 +1,7 @@
 const http = require("http");
 
-const originalEnd = http.ServerResponse.prototype.end;
 const WORKING_APP_URL = "https://raw.githubusercontent.com/ludmila123456789k-cmd/dashboards2/fix-report-save-symbols-20260903/public/app.js";
+const originalCreateServer = http.createServer.bind(http);
 
 function patchAppScript(source) {
   if (typeof source !== "string") return source;
@@ -36,29 +36,37 @@ function patchAppScript(source) {
   return source.replace(match[1], Buffer.from(html, "utf8").toString("base64"));
 }
 
-async function getWorkingAppScript(fallback) {
-  if (typeof fallback === "string" && fallback.includes("PROJECT2_HTML_BASE64")) return fallback;
-  try {
-    const response = await fetch(WORKING_APP_URL, { cache: "no-store" });
-    if (response.ok) return await response.text();
-  } catch (error) {}
-  return fallback;
+async function fetchWorkingAppScript() {
+  const response = await fetch(WORKING_APP_URL, { cache: "no-store" });
+  if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
+  return patchAppScript(await response.text());
 }
 
-http.ServerResponse.prototype.end = function patchedEnd(chunk, encoding, callback) {
-  const contentType = String(this.getHeader("Content-Type") || "");
-  if (!contentType.includes("application/javascript") || !chunk) {
-    return originalEnd.call(this, chunk, encoding, callback);
-  }
+http.createServer = function createRouteFixedServer(listener) {
+  return originalCreateServer(async (req, res) => {
+    const pathname = new URL(req.url || "/", "http://localhost").pathname;
+    if (req.method === "GET" && pathname === "/app.js") {
+      try {
+        const script = await fetchWorkingAppScript();
+        res.writeHead(200, {
+          "Content-Type": "application/javascript; charset=utf-8",
+          "Cache-Control": "no-store, no-cache, must-revalidate"
+        });
+        res.end(script);
+      } catch (error) {
+        res.writeHead(502, {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "no-store"
+        });
+        res.end(`Не удалось загрузить новый интерфейс: ${error.message}`);
+      }
+      return;
+    }
 
-  const asString = Buffer.isBuffer(chunk) ? chunk.toString("utf8") : String(chunk);
-  getWorkingAppScript(asString).then(script => {
-    const patched = patchAppScript(script);
-    originalEnd.call(this, Buffer.isBuffer(chunk) ? Buffer.from(patched, "utf8") : patched, encoding, callback);
-  }).catch(() => {
-    originalEnd.call(this, chunk, encoding, callback);
+    if (typeof listener === "function") return listener(req, res);
+    res.statusCode = 404;
+    res.end("Not found");
   });
-  return this;
 };
 
 require("./server-hotfix.js");
