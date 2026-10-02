@@ -7,6 +7,7 @@ function patchOuterAppScript(source) {
   return source
     .replace(/\{ id: "project2", label: "Доска проектов 2", icon: "board" \}/g, '{ id: "project2", label: "Доска проектов", icon: "board" }')
     .replace(/title="Доска проектов 2"/g, 'title="Доска проектов"')
+    .replace(/<section class="project2-embed">\s*<iframe class="project2-frame" title="Доска проектов"><\/iframe>\s*<\/section>/g, '<section class="project2-embed" style="margin:0;padding:0;width:100%;height:calc(100vh - 100px);min-height:780px;overflow:visible"><iframe class="project2-frame" title="Доска проектов" style="display:block;width:100%;height:100%;min-height:780px;border:0;background:#f6f8fb"></iframe></section>')
     .replace(/const section = SECTIONS\.find\(item => item\.id === activeSection\) \|\| SECTIONS\[0\];/, 'if (activeSection === "board") activeSection = "project2";\n  const section = SECTIONS.find(item => item.id === activeSection) || SECTIONS[0];')
     .replace(/localStorage\.setItem\(ACTIVE_SECTION_KEY, activeSection\);/g, 'localStorage.setItem(ACTIVE_SECTION_KEY, activeSection === "board" ? "project2" : activeSection);');
 }
