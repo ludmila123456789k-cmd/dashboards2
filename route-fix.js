@@ -3,7 +3,15 @@ const http = require("http");
 const WORKING_APP_URL = "https://raw.githubusercontent.com/ludmila123456789k-cmd/dashboards2/fix-report-save-symbols-20260903/public/app.js";
 const originalCreateServer = http.createServer.bind(http);
 
-function patchAppScript(source) {
+function patchOuterAppScript(source) {
+  return source
+    .replace(/\{ id: "project2", label: "Доска проектов 2", icon: "board" \}/g, '{ id: "project2", label: "Доска проектов", icon: "board" }')
+    .replace(/title="Доска проектов 2"/g, 'title="Доска проектов"')
+    .replace(/const section = SECTIONS\.find\(item => item\.id === activeSection\) \|\| SECTIONS\[0\];/, 'if (activeSection === "board") activeSection = "project2";\n  const section = SECTIONS.find(item => item.id === activeSection) || SECTIONS[0];')
+    .replace(/localStorage\.setItem\(ACTIVE_SECTION_KEY, activeSection\);/g, 'localStorage.setItem(ACTIVE_SECTION_KEY, activeSection === "board" ? "project2" : activeSection);');
+}
+
+function patchProject2Html(source) {
   if (typeof source !== "string") return source;
   const match = source.match(/const PROJECT2_HTML_BASE64 = '([^']+)'/);
   if (!match) return source;
@@ -34,6 +42,10 @@ function patchAppScript(source) {
   );
 
   return source.replace(match[1], Buffer.from(html, "utf8").toString("base64"));
+}
+
+function patchAppScript(source) {
+  return patchProject2Html(patchOuterAppScript(source));
 }
 
 async function fetchWorkingAppScript() {
