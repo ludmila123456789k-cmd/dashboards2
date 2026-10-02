@@ -1,6 +1,8 @@
 const http = require("http");
 
-const WORKING_APP_URL = "https://raw.githubusercontent.com/ludmila123456789k-cmd/dashboards2/fix-report-save-symbols-20260903/public/app.js";
+const WORKING_BRANCH = "fix-report-save-symbols-20260903";
+const WORKING_APP_URL = `https://raw.githubusercontent.com/ludmila123456789k-cmd/dashboards2/${WORKING_BRANCH}/public/app.js`;
+const EVENT_ASSET_BASE_URL = `https://raw.githubusercontent.com/ludmila123456789k-cmd/dashboards2/${WORKING_BRANCH}/public/event-assets/`;
 const originalCreateServer = http.createServer.bind(http);
 
 function patchOuterAppScript(source) {
@@ -13,7 +15,12 @@ function patchOuterAppScript(source) {
 }
 
 function patchEmployeeEvents(source) {
-  let result = source;
+  let result = source
+    .replaceAll("Осенняя анимация", "Осень")
+    .replaceAll("Зимняя анимация", "Зима")
+    .replaceAll("Весенняя анимация", "Весна")
+    .replaceAll("Летняя анимация", "Лето");
+
   result = result.replace(
     /function employeeEventClosed\(day, type\) \{[\s\S]*?\n\}/,
     'function employeeEventClosed(day, type) { return false; }'
@@ -24,8 +31,13 @@ function patchEmployeeEvents(source) {
   );
   result = result.replace(
     /function renderLottieEvent\(kind, label, day, fileName\) \{[\s\S]*?\n\}/,
-    'function renderLottieEvent(kind, label, day, fileName) {\n  return `<aside class="employee-event employee-event-${kind}">${employeeEventCloseButton(day, kind)}<div class="employee-lottie" data-lottie-src="/event-assets/${escapeAttribute(fileName)}" aria-label="${escapeAttribute(label)}"></div><div class="employee-lottie-caption">${escapeHtml(label)}</div></aside>`;\n}'
+    'function renderLottieEvent(kind, label, day, fileName) {\n  return `<aside class="employee-event employee-event-${kind}">${employeeEventCloseButton(day, kind)}<div class="employee-lottie" data-lottie-src="/event-assets/${escapeAttribute(fileName)}" aria-label="${escapeAttribute(label)}"></div></aside>`;\n}'
   );
+  result = result.replace(
+    "container.innerHTML = `<div class=\"employee-lottie-fallback\">Анимация</div>`;",
+    "container.innerHTML = `<div class=\"employee-lottie-fallback\" aria-hidden=\"true\"><span></span><span></span><span></span><span></span><span></span></div>`;"
+  );
+
   const style = `
 const employeeEventStyle = document.createElement("style");
 employeeEventStyle.textContent = ` + JSON.stringify(`
@@ -34,7 +46,14 @@ employeeEventStyle.textContent = ` + JSON.stringify(`
 .employee-event{position:sticky!important;top:18px!important;display:block!important;min-height:300px!important;border:1px solid #dbe3ef!important;border-radius:14px!important;background:#fff!important;box-shadow:0 14px 32px rgba(15,23,42,.08)!important;overflow:hidden!important;z-index:2!important}
 .employee-lottie{width:100%!important;height:300px!important;background:#fff!important}
 .employee-lottie svg{width:100%!important;height:100%!important;display:block!important}
-.employee-lottie-caption{position:absolute!important;left:12px!important;right:12px!important;bottom:12px!important;padding:8px 10px!important;border-radius:999px!important;background:rgba(255,255,255,.86)!important;font-weight:800!important;text-align:center!important;color:#0f172a!important}
+.employee-lottie-fallback{position:absolute!important;inset:0!important;overflow:hidden!important;background:linear-gradient(180deg,#fff7ed 0%,#fef3c7 52%,#fff 100%)!important}
+.employee-lottie-fallback span{position:absolute!important;top:-48px!important;width:46px!important;height:28px!important;border-radius:80% 0 80% 0!important;background:#f97316!important;box-shadow:0 10px 24px #92400e24!important;animation:employee-fallback-leaf 5.5s linear infinite!important;opacity:.88!important}
+.employee-lottie-fallback span:nth-child(1){left:12%!important;animation-delay:-.4s!important;--dx:70px;--rot:420deg;background:#f97316!important}
+.employee-lottie-fallback span:nth-child(2){left:32%!important;animation-delay:-1.7s!important;--dx:-42px;--rot:520deg;background:#dc2626!important;transform:scale(.78)!important}
+.employee-lottie-fallback span:nth-child(3){left:53%!important;animation-delay:-2.8s!important;--dx:58px;--rot:460deg;background:#f59e0b!important;transform:scale(1.08)!important}
+.employee-lottie-fallback span:nth-child(4){left:72%!important;animation-delay:-.9s!important;--dx:-66px;--rot:560deg;background:#b45309!important;transform:scale(.88)!important}
+.employee-lottie-fallback span:nth-child(5){left:86%!important;animation-delay:-3.6s!important;--dx:-38px;--rot:500deg;background:#ef4444!important;transform:scale(.68)!important}
+@keyframes employee-fallback-leaf{0%{translate:0 -40px;rotate:0deg;opacity:0}10%{opacity:.95}100%{translate:var(--dx,40px) 460px;rotate:var(--rot,480deg);opacity:.9}}
 .employee-event-picture{min-height:300px!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:10px!important;padding:14px!important;text-align:center!important}
 .employee-event-picture img{max-width:100%!important;max-height:240px!important;object-fit:contain!important;display:block!important}
 .employee-event-picture strong{font-size:18px!important;line-height:1.2!important;color:#0f172a!important}
@@ -62,23 +81,14 @@ function patchProject2Html(source) {
     return source;
   }
 
-  html = html.replace(
-    /<button id="navBoard"[^>]*data-nav="board"[^>]*>Доска проектов<\/button>/,
-    ""
-  );
-  html = html.replace(
-    /(<button id="navProjects"[^>]*>)[^<]*(<\/button>)/,
-    "$1Доска проектов$2"
-  );
+  html = html.replace(/<button id="navBoard"[^>]*data-nav="board"[^>]*>Доска проектов<\/button>/, "");
+  html = html.replace(/(<button id="navProjects"[^>]*>)[^<]*(<\/button>)/, "$1Доска проектов$2");
   html = html.replaceAll("Доска проектов 2", "Доска проектов");
   html = html.replace(
     "function render(){document.querySelectorAll('[data-nav]').forEach(btn=>btn.classList.toggle('active',btn.dataset.nav===section));root.innerHTML=section==='reports'?reportsView():section==='projects'?projectView():section==='marketing'?marketingView():section==='calendar'?calendarView():section==='board'?boardView():settingsView();initSeasonalLotties()}",
     "function render(){if(section==='board')section='projects';document.querySelectorAll('[data-nav]').forEach(btn=>btn.classList.toggle('active',btn.dataset.nav===section));root.innerHTML=section==='reports'?reportsView():section==='projects'?projectView():section==='marketing'?marketingView():section==='calendar'?calendarView():settingsView();initSeasonalLotties()}"
   );
-  html = html.replace(
-    "function setSection(s){section=s;render()}",
-    "function setSection(s){section=s==='board'?'projects':s;render()}"
-  );
+  html = html.replace("function setSection(s){section=s;render()}", "function setSection(s){section=s==='board'?'projects':s;render()}");
 
   return source.replace(match[1], Buffer.from(html, "utf8").toString("base64"));
 }
@@ -87,10 +97,36 @@ function patchAppScript(source) {
   return patchEmployeeEvents(patchProject2Html(patchOuterAppScript(source)));
 }
 
+function eventAssetContentType(assetPath) {
+  const value = String(assetPath || "").toLowerCase();
+  if (value.endsWith(".json")) return "application/json; charset=utf-8";
+  if (value.endsWith(".png")) return "image/png";
+  if (value.endsWith(".webp")) return "image/webp";
+  return "application/octet-stream";
+}
+
 async function fetchWorkingAppScript() {
   const response = await fetch(WORKING_APP_URL, { cache: "no-store" });
   if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
   return patchAppScript(await response.text());
+}
+
+async function serveEventAsset(pathname, res) {
+  const assetName = decodeURIComponent(pathname.slice("/event-assets/".length));
+  if (!/^[a-zA-Z0-9._ -]+$/.test(assetName)) {
+    res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
+    res.end("Bad asset path");
+    return;
+  }
+  const response = await fetch(EVENT_ASSET_BASE_URL + encodeURIComponent(assetName).replace(/%20/g, "%20"), { cache: "no-store" });
+  if (!response.ok) {
+    res.writeHead(response.status, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
+    res.end("Asset not found");
+    return;
+  }
+  const body = Buffer.from(await response.arrayBuffer());
+  res.writeHead(200, { "Content-Type": eventAssetContentType(assetName), "Cache-Control": "public, max-age=300" });
+  res.end(body);
 }
 
 http.createServer = function createRouteFixedServer(listener) {
@@ -105,11 +141,18 @@ http.createServer = function createRouteFixedServer(listener) {
         });
         res.end(script);
       } catch (error) {
-        res.writeHead(502, {
-          "Content-Type": "text/plain; charset=utf-8",
-          "Cache-Control": "no-store"
-        });
+        res.writeHead(502, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
         res.end(`Не удалось загрузить новый интерфейс: ${error.message}`);
+      }
+      return;
+    }
+
+    if (req.method === "GET" && pathname.startsWith("/event-assets/")) {
+      try {
+        await serveEventAsset(pathname, res);
+      } catch (error) {
+        res.writeHead(502, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
+        res.end(`Не удалось загрузить анимацию: ${error.message}`);
       }
       return;
     }
