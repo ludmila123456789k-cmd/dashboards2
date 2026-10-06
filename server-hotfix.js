@@ -30,6 +30,14 @@ http.createServer = function createPatchedServer(listener) {
   return originalCreateServer(async (req, res) => {
     try {
       const pathname = new URL(req.url || "/", "http://localhost").pathname;
+      if (req.method === "GET" && pathname === "/app.js") {
+        servePatchedAppJs(res);
+        return;
+      }
+      if (req.method === "GET" && pathname === "/styles.css") {
+        servePatchedStylesCss(res);
+        return;
+      }
       if (req.method === "PUT" && pathname === "/api/employees/report") {
         await handleSaveEmployeeReport(req, res);
         return;
@@ -54,6 +62,210 @@ http.createServer = function createPatchedServer(listener) {
 };
 
 require("./server.js");
+
+function patchProject2AppScript(source) {
+  const match = source.match(/const PROJECT2_HTML_BASE64 = '([^']+)'/);
+  if (!match) return source;
+
+  let html;
+  try {
+    html = Buffer.from(match[1], "base64").toString("utf8");
+  } catch (error) {
+    return source;
+  }
+
+  html = html.replace(
+    /<button id="navBoard"[^>]*data-nav="board"[^>]*>Доска проектов<\/button>/,
+    ""
+  );
+  html = html.replace(
+    /(<button id="navProjects"[^>]*>)[^<]*(<\/button>)/,
+    "$1Доска проектов$2"
+  );
+  html = html.replaceAll("Доска проектов 2", "Доска проектов");
+  html = html.replace(
+    "function render(){document.querySelectorAll('[data-nav]').forEach(btn=>btn.classList.toggle('active',btn.dataset.nav===section));root.innerHTML=section==='reports'?reportsView():section==='projects'?projectView():section==='marketing'?marketingView():section==='calendar'?calendarView():section==='board'?boardView():settingsView();initSeasonalLotties()}",
+    "function render(){if(section==='board')section='projects';document.querySelectorAll('[data-nav]').forEach(btn=>btn.classList.toggle('active',btn.dataset.nav===section));root.innerHTML=section==='reports'?reportsView():section==='projects'?projectView():section==='marketing'?marketingView():section==='calendar'?calendarView():settingsView();initSeasonalLotties()}"
+  );
+  html = html.replace(
+    "function setSection(s){section=s;render()}",
+    "function setSection(s){section=s==='board'?'projects':s;render()}"
+  );
+  html = html.replace(
+    "</style>",
+    ".board{overflow:visible!important}.content,#root{overflow:visible!important;height:auto!important;max-height:none!important}.app{height:auto!important;min-height:100vh}html,body{overflow-y:auto!important}</style>"
+  );
+
+  html = html.replace(
+    /function project2HasContent\(state\)\{[^}]*\}/,
+    "function project2HasContent(state){return Boolean(state&&state.initialized&&(project2ItemCount(state)>0||(Array.isArray(state?.people)&&state.people.length>0)))}"
+  );
+
+  if (!html.includes("function project2DeleteCount(state)")) {
+    html = html.replace(
+      "function project2ItemCount(state){return (Array.isArray(state?.tasks)?state.tasks.length:0)+(Array.isArray(state?.backlog)?state.backlog.length:0)}",
+      "function project2ItemCount(state){return (Array.isArray(state?.tasks)?state.tasks.length:0)+(Array.isArray(state?.backlog)?state.backlog.length:0)+(Array.isArray(state?.people)?state.people.length:0)}\n    function project2DeleteCount(state){return (Array.isArray(state?.deletedTaskIds)?state.deletedTaskIds.length:0)+(Array.isArray(state?.deletedBacklogIds)?state.deletedBacklogIds.length:0)+(Array.isArray(state?.deletedPersonNames)?state.deletedPersonNames.length:0)}"
+    );
+  }
+  html = html.replace(
+    /function project2ItemCount\(state\)\{return \(Array\.isArray\(state\?\.tasks\)\?state\.tasks\.length:0\)\+\(Array\.isArray\(state\?\.backlog\)\?state\.backlog\.length:0\)(?:\+\(Array\.isArray\(state\?\.people\)\?state\.people\.length:0\))?\}/,
+    "function project2ItemCount(state){return (Array.isArray(state?.tasks)?state.tasks.length:0)+(Array.isArray(state?.backlog)?state.backlog.length:0)+(Array.isArray(state?.people)?state.people.length:0)}"
+  );
+  html = html.replace(
+    /function project2DeleteCount\(state\)\{return \(Array\.isArray\(state\?\.deletedTaskIds\)\?state\.deletedTaskIds\.length:0\)\+\(Array\.isArray\(state\?\.deletedBacklogIds\)\?state\.deletedBacklogIds\.length:0\)(?:\+\(Array\.isArray\(state\?\.deletedPersonNames\)\?state\.deletedPersonNames\.length:0\))?\}/,
+    "function project2DeleteCount(state){return (Array.isArray(state?.deletedTaskIds)?state.deletedTaskIds.length:0)+(Array.isArray(state?.deletedBacklogIds)?state.deletedBacklogIds.length:0)+(Array.isArray(state?.deletedPersonNames)?state.deletedPersonNames.length:0)}"
+  );
+
+  const oldLoad = "async function loadProject2State(){const localState=readLocalProject2State();applyProject2State(localState);try{const response=await fetch('/api/project2',{cache:'no-store'});if(!response.ok)return;const payload=await response.json();const shared=payload?.project2;if(project2HasContent(shared)){applyProject2State(shared);writeLocalProject2State(project2StateSnapshot());exportDoneTasksToEmployees();render();return}if(project2HasContent(localState)||tasks.length||backlog.length)saveProject2State(false)}catch(e){}}";
+  const newLoad = "async function loadProject2State(){try{const response=await fetch('/api/project2',{cache:'no-store'});if(response.ok){const payload=await response.json();const shared=payload?.project2;if(shared&&shared.initialized){applyProject2State(shared);writeLocalProject2State(project2StateSnapshot());exportDoneTasksToEmployees();render();return}}}catch(e){}const localState=readLocalProject2State();if(project2HasContent(localState)){applyProject2State(localState);exportDoneTasksToEmployees();render();}}";
+  html = html.replace(oldLoad, newLoad);
+
+  const oldSave = "async function saveProject2State(showMessage){try{const state=project2StateSnapshot();writeLocalProject2State(state);exportDoneTasksToEmployees();clearTimeout(project2SaveTimer);project2SaveTimer=setTimeout(()=>saveProject2ToServer(state,showMessage),showMessage?0:250);if(showMessage)alert('Сохранено');}catch(e){alert('Не удалось сохранить. Проверьте доступ к памяти браузера.')}}";
+  const newSave = "async function saveProject2State(showMessage){try{const state=project2StateSnapshot();if(project2ItemCount(state)===0&&project2DeleteCount(state)===0){if(showMessage)alert('Нет задач для сохранения');return}writeLocalProject2State(state);exportDoneTasksToEmployees();clearTimeout(project2SaveTimer);project2SaveTimer=setTimeout(()=>saveProject2ToServer(state,showMessage),showMessage?0:250);if(showMessage)alert('Сохранено');}catch(e){alert('Не удалось сохранить. Проверьте доступ к памяти браузера.')}}";
+  html = html.replace(oldSave, newSave);
+
+  const oldSaveServer = "async function saveProject2ToServer(state,showErrors=false){try{const response=await fetch('/api/project2',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({project2:state})});if(!response.ok&&showErrors)alert('Не удалось сохранить общую доску на сервер')}catch(e){if(showErrors)alert('Не удалось сохранить общую доску на сервер')}}";
+  const newSaveServer = "async function saveProject2ToServer(state,showErrors=false){try{const response=await fetch('/api/project2',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({project2:state})});if(!response.ok){if(showErrors)alert('Не удалось сохранить общую доску на сервер');return}const payload=await response.json().catch(()=>({}));const shared=payload?.project2;if(shared&&shared.initialized){applyProject2State(shared);writeLocalProject2State(project2StateSnapshot());exportDoneTasksToEmployees();render()}}catch(e){if(showErrors)alert('Не удалось сохранить общую доску на сервер')}}";
+  html = html.replace(oldSaveServer, newSaveServer);
+
+  html = html.replace(
+    /let tasks=\[[\s\S]*?\];\s*let backlog=\[[\s\S]*?\];\s*function task/,
+    "let tasks=[];\n    let backlog=[];\n    function task"
+  );
+
+  if (!html.includes("function touchProject2Item(item)")) {
+    html = html.replace(
+      "function task(id,number,title,status,priority,assignee,description,category='Frontend'){const time=new Date().toISOString();return{id,number,title,status,priority,assignee,start:'',due:'2026-09-25',description,category,createdAt:time,updatedAt:time}}",
+      "function task(id,number,title,status,priority,assignee,description,category='Frontend'){const time=new Date().toISOString();return{id,number,title,status,priority,assignee,start:'',due:'2026-09-25',description,category,createdAt:time,updatedAt:time}}\n    function touchProject2Item(item){if(item)item.updatedAt=new Date().toISOString();return item}"
+    );
+  }
+
+  html = html.replace(
+    "function moveCurrentToBacklog(){if(editSource!=='tasks')return;const i=tasks.findIndex(t=>t.id===editId);if(i>-1){backlog.push(tasks.splice(i,1)[0]);persistProject2();closeModal();render()}}function moveCurrentToKanban(){if(editSource!=='backlog')return;const i=backlog.findIndex(t=>t.id===editId);if(i>-1){tasks.push(backlog.splice(i,1)[0]);persistProject2();closeModal();render()}}",
+    "function moveCurrentToBacklog(){if(editSource!=='tasks')return;const i=tasks.findIndex(t=>t.id===editId);if(i>-1){backlog.push(touchProject2Item(tasks.splice(i,1)[0]));persistProject2();closeModal();render()}}function moveCurrentToKanban(){if(editSource!=='backlog')return;const i=backlog.findIndex(t=>t.id===editId);if(i>-1){tasks.push(touchProject2Item(backlog.splice(i,1)[0]));persistProject2();closeModal();render()}}"
+  );
+
+  html = html.replace(
+    "function moveToKanban(id){const i=backlog.findIndex(x=>x.id===id);if(i>-1){tasks.push(backlog.splice(i,1)[0]);persistProject2();render()}}function moveToBacklog(id){const i=tasks.findIndex(x=>x.id===id);if(i>-1){backlog.push(tasks.splice(i,1)[0]);persistProject2();render()}}",
+    "function moveToKanban(id){const i=backlog.findIndex(x=>x.id===id);if(i>-1){tasks.push(touchProject2Item(backlog.splice(i,1)[0]));persistProject2();render()}}function moveToBacklog(id){const i=tasks.findIndex(x=>x.id===id);if(i>-1){backlog.push(touchProject2Item(tasks.splice(i,1)[0]));persistProject2();render()}}"
+  );
+
+  if (!html.includes("let deletedPersonNames=[]")) {
+    html = html.replace(
+      "let deletedTaskIds=[];let deletedBacklogIds=[];",
+      "let deletedTaskIds=[];let deletedBacklogIds=[];let deletedPersonNames=[];"
+    );
+  }
+
+  html = html.replace(
+    "function project2StateSnapshot(){return{people,categories,tasks,backlog,filters,deletedTaskIds,deletedBacklogIds,initialized:true,updatedAt:new Date().toISOString()}}",
+    "function project2StateSnapshot(){return{people,categories,tasks,backlog,filters,deletedTaskIds,deletedBacklogIds,deletedPersonNames,initialized:true,updatedAt:new Date().toISOString()}}"
+  );
+
+  html = html.replace(
+    "function mergeProject2States(base={},extra={}){const taskDeletes=Array.from(new Set([...(base.deletedTaskIds||[]),...(extra.deletedTaskIds||[])]));const backlogDeletes=Array.from(new Set([...(base.deletedBacklogIds||[]),...(extra.deletedBacklogIds||[])]));return{...base,...extra,people:Array.isArray(extra.people)&&extra.people.length?extra.people:base.people,categories:Array.isArray(extra.categories)&&extra.categories.length?extra.categories:base.categories,deletedTaskIds:taskDeletes,deletedBacklogIds:backlogDeletes,tasks:mergeProject2List(base.tasks,extra.tasks,taskDeletes),backlog:mergeProject2List(base.backlog,extra.backlog,backlogDeletes),filters:{...(base.filters||{}),...(extra.filters||{})},initialized:true,updatedAt:new Date().toISOString()}}",
+    "function mergeProject2States(base={},extra={}){const taskDeletes=Array.from(new Set([...(base.deletedTaskIds||[]),...(extra.deletedTaskIds||[])]));const backlogDeletes=Array.from(new Set([...(base.deletedBacklogIds||[]),...(extra.deletedBacklogIds||[])]));const personDeletes=Array.from(new Set([...(base.deletedPersonNames||[]),...(extra.deletedPersonNames||[])]));const peopleSource=Array.isArray(extra.people)?extra.people:base.people;return{...base,...extra,people:(Array.isArray(peopleSource)?peopleSource:[]).filter(p=>!personDeletes.includes(String(p?.name||''))),categories:Array.isArray(extra.categories)&&extra.categories.length?extra.categories:base.categories,deletedTaskIds:taskDeletes,deletedBacklogIds:backlogDeletes,deletedPersonNames:personDeletes,tasks:mergeProject2List(base.tasks,extra.tasks,taskDeletes),backlog:mergeProject2List(base.backlog,extra.backlog,backlogDeletes),filters:{...(base.filters||{}),...(extra.filters||{})},initialized:true,updatedAt:new Date().toISOString()}}"
+  );
+
+  html = html.replace(
+    "function applyProject2State(value){const saved=normalizeProject2State(value);if(saved.filters&&typeof saved.filters==='object')filters={...filters,...saved.filters};if(Array.isArray(saved.people)){people.splice(0,people.length,...saved.people.map((p,i)=>({...people[i],...p})));}if(Array.isArray(saved.categories)&&saved.categories.length){categories.splice(0,categories.length,...saved.categories);}",
+    "function applyProject2State(value){const saved=normalizeProject2State(value);if(saved.filters&&typeof saved.filters==='object')filters={...filters,...saved.filters};if(Array.isArray(saved.deletedPersonNames))deletedPersonNames=Array.from(new Set(saved.deletedPersonNames.filter(Boolean))).slice(-1000);if(Array.isArray(saved.people)){people.splice(0,people.length,...saved.people.filter(p=>!deletedPersonNames.includes(String(p?.name||''))).map((p,i)=>({...people[i],...p})));}if(Array.isArray(saved.categories)&&saved.categories.length){categories.splice(0,categories.length,...saved.categories);}"
+  );
+
+  html = html.replace(
+    "if(Array.isArray(saved.tasks)){tasks.splice(0,tasks.length,...saved.tasks.filter(t=>!deletedTaskIds.includes(String(t.id||''))).map(normalizeProject2Task));}if(Array.isArray(saved.backlog)){backlog.splice(0,backlog.length,...saved.backlog.filter(t=>!deletedBacklogIds.includes(String(t.id||''))).map(normalizeProject2Task));}",
+    "if(Array.isArray(saved.tasks)){const deletedTaskSet=new Set(deletedTaskIds);tasks.splice(0,tasks.length,...saved.tasks.filter(t=>!project2DeleteKeys(t).some(key=>deletedTaskSet.has(key))).map(normalizeProject2Task));}if(Array.isArray(saved.backlog)){const deletedBacklogSet=new Set(deletedBacklogIds);backlog.splice(0,backlog.length,...saved.backlog.filter(t=>!project2DeleteKeys(t).some(key=>deletedBacklogSet.has(key))).map(normalizeProject2Task));}"
+  );
+
+  html = html.replace(
+    "function rememberProject2Delete(id,source){if(!id)return;if(source==='backlog')deletedBacklogIds=Array.from(new Set([...deletedBacklogIds,String(id)])).slice(-1000);else deletedTaskIds=Array.from(new Set([...deletedTaskIds,String(id)])).slice(-1000)}function deleteCurrentTask(){if(confirm('Удалить эту задачу?')){const arr=editSource==='tasks'?tasks:backlog;const idx=arr.findIndex(t=>t.id===editId);if(idx>-1){rememberProject2Delete(editId,editSource);arr.splice(idx,1)}persistProject2();closeModal();render()}}function deleteTaskFromCard(event,id,source){event?.stopPropagation?.();if(!confirm('Удалить эту задачу?'))return;const arr=source==='backlog'?backlog:tasks;const idx=arr.findIndex(t=>t.id===id);if(idx>-1){rememberProject2Delete(id,source);arr.splice(idx,1);persistProject2();render()}}",
+    "function project2DeleteKeys(itemOrId){const item=typeof itemOrId==='object'?itemOrId:null;const keys=item?[item.id,item.number]:[itemOrId];if(item&&!item.id&&!item.number)keys.push(item.title);return Array.from(new Set(keys.map(value=>String(value||'')).filter(Boolean)))}function rememberProject2Delete(itemOrId,source){const keys=project2DeleteKeys(itemOrId);if(!keys.length)return;if(source==='backlog')deletedBacklogIds=Array.from(new Set([...deletedBacklogIds,...keys])).slice(-1000);else deletedTaskIds=Array.from(new Set([...deletedTaskIds,...keys])).slice(-1000)}function deleteCurrentTask(){if(confirm('Удалить эту задачу?')){const arr=editSource==='tasks'?tasks:backlog;const idx=arr.findIndex(t=>t.id===editId);if(idx>-1){rememberProject2Delete(arr[idx],editSource);arr.splice(idx,1)}persistProject2();closeModal();render()}}function deleteTaskFromCard(event,id,source){event?.stopPropagation?.();if(!confirm('Удалить эту задачу?'))return;const arr=source==='backlog'?backlog:tasks;const idx=arr.findIndex(t=>t.id===id);if(idx>-1){rememberProject2Delete(arr[idx],source);arr.splice(idx,1);persistProject2();render()}}"
+  );
+
+  html = html.replace(
+    "function deleteReportTask(id){if(confirm('Удалить эту задачу?')){const i=tasks.findIndex(t=>t.id===id);if(i>-1)tasks.splice(i,1);persistProject2();render()}}",
+    "function deleteReportTask(id){if(confirm('Удалить эту задачу?')){const i=tasks.findIndex(t=>t.id===id);if(i>-1){rememberProject2Delete(tasks[i],'tasks');tasks.splice(i,1)}persistProject2();render()}}"
+  );
+
+  html = html.replace(
+    "function addPerson(){people.push({name:'Новый исполнитель',telegram:''});render()}function updatePerson(i,name){const old=people[i].name;people[i].name=name;if(reportEmployee===old)reportEmployee=name;tasks.forEach(t=>{if(t.assignee===old)t.assignee=name});backlog.forEach(t=>{if(t.assignee===old)t.assignee=name})}function updateTelegram(i,value){people[i].telegram=value}function deletePerson(i){if(confirm('Удалить пользователя навсегда?')){const old=people[i].name;people.splice(i,1);tasks.forEach(t=>{if(t.assignee===old)t.assignee=''});backlog.forEach(t=>{if(t.assignee===old)t.assignee=''});if(reportEmployee===old)reportEmployee=people[0]?.name||'';render()}}",
+    "function addPerson(){const base='Новый исполнитель';let n=people.length+1;let name=base;const used=()=>people.some(p=>String(p?.name||'')===name)||deletedPersonNames.includes(name);while(used()){name=`${base} ${n++}`}deletedPersonNames=deletedPersonNames.filter(item=>item!==name);people.push({name,telegram:''});persistProject2();render()}function updatePerson(i,name){const old=people[i].name;people[i].name=name;deletedPersonNames=deletedPersonNames.filter(item=>item!==name);if(reportEmployee===old)reportEmployee=name;tasks.forEach(t=>{if(t.assignee===old){t.assignee=name;touchProject2Item(t)}});backlog.forEach(t=>{if(t.assignee===old){t.assignee=name;touchProject2Item(t)}});persistProject2()}function updateTelegram(i,value){people[i].telegram=value;persistProject2()}function deletePerson(i){if(confirm('Удалить пользователя навсегда?')){const old=people[i].name;deletedPersonNames=Array.from(new Set([...deletedPersonNames,old])).slice(-1000);people.splice(i,1);tasks.forEach(t=>{if(t.assignee===old){t.assignee='';touchProject2Item(t)}});backlog.forEach(t=>{if(t.assignee===old){t.assignee='';touchProject2Item(t)}});if(reportEmployee===old)reportEmployee=people[0]?.name||'';persistProject2();render()}}"
+  );
+
+  html = html.replace(
+    "function addPerson(){people.push({name:'Новый исполнитель',telegram:''});persistProject2();render()}function updatePerson(i,name){const old=people[i].name;people[i].name=name;deletedPersonNames=deletedPersonNames.filter(item=>item!==name);if(reportEmployee===old)reportEmployee=name;tasks.forEach(t=>{if(t.assignee===old){t.assignee=name;touchProject2Item(t)}});backlog.forEach(t=>{if(t.assignee===old){t.assignee=name;touchProject2Item(t)}});persistProject2()}function updateTelegram(i,value){people[i].telegram=value;persistProject2()}function deletePerson(i){if(confirm('Удалить пользователя навсегда?')){const old=people[i].name;deletedPersonNames=Array.from(new Set([...deletedPersonNames,old])).slice(-1000);people.splice(i,1);tasks.forEach(t=>{if(t.assignee===old){t.assignee='';touchProject2Item(t)}});backlog.forEach(t=>{if(t.assignee===old){t.assignee='';touchProject2Item(t)}});if(reportEmployee===old)reportEmployee=people[0]?.name||'';persistProject2();render()}}",
+    "function addPerson(){const base='Новый исполнитель';let n=people.length+1;let name=base;const used=()=>people.some(p=>String(p?.name||'')===name)||deletedPersonNames.includes(name);while(used()){name=`${base} ${n++}`}deletedPersonNames=deletedPersonNames.filter(item=>item!==name);people.push({name,telegram:''});persistProject2();render()}function updatePerson(i,name){const old=people[i].name;people[i].name=name;deletedPersonNames=deletedPersonNames.filter(item=>item!==name);if(reportEmployee===old)reportEmployee=name;tasks.forEach(t=>{if(t.assignee===old){t.assignee=name;touchProject2Item(t)}});backlog.forEach(t=>{if(t.assignee===old){t.assignee=name;touchProject2Item(t)}});persistProject2()}function updateTelegram(i,value){people[i].telegram=value;persistProject2()}function deletePerson(i){if(confirm('Удалить пользователя навсегда?')){const old=people[i].name;deletedPersonNames=Array.from(new Set([...deletedPersonNames,old])).slice(-1000);people.splice(i,1);tasks.forEach(t=>{if(t.assignee===old){t.assignee='';touchProject2Item(t)}});backlog.forEach(t=>{if(t.assignee===old){t.assignee='';touchProject2Item(t)}});if(reportEmployee===old)reportEmployee=people[0]?.name||'';persistProject2();render()}}"
+  );
+
+  const nextBase64 = Buffer.from(html, "utf8").toString("base64");
+  return source.replace(match[1], nextBase64);
+}
+
+function servePatchedAppJs(res) {
+  const appPath = path.join(ROOT, "public", "app.js");
+  fs.readFile(appPath, "utf8", (error, content) => {
+    if (error) {
+      res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("Not found");
+      return;
+    }
+    const patched = patchEmployeeEventAppScript(patchProject2AppScript(content));
+    res.writeHead(200, {
+      "Content-Type": "application/javascript; charset=utf-8",
+      "Cache-Control": "no-store"
+    });
+    res.end(patched);
+  });
+}
+
+function patchEmployeeEventAppScript(source) {
+  return source.replace(
+    "container.innerHTML = `<div class=\"employee-lottie-fallback\">Анимация</div>`;",
+    "container.innerHTML = `<div class=\"employee-lottie-fallback\" aria-hidden=\"true\"><span></span><span></span><span></span><span></span><span></span></div>`;"
+  );
+}
+
+function servePatchedStylesCss(res) {
+  const stylesPath = path.join(ROOT, "public", "styles.css");
+  fs.readFile(stylesPath, "utf8", (error, content) => {
+    if (error) {
+      res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("Not found");
+      return;
+    }
+    const patched = patchEmployeeEventStyles(content);
+    res.writeHead(200, {
+      "Content-Type": "text/css; charset=utf-8",
+      "Cache-Control": "no-store"
+    });
+    res.end(patched);
+  });
+}
+
+function patchEmployeeEventStyles(source) {
+  const fallbackCss = `
+.employee-event{border-left:0!important;background:transparent!important;box-shadow:none!important}
+.employee-event-close{display:grid!important;place-items:center!important;padding:0!important;line-height:0!important;font-size:0!important;text-align:center!important}
+.employee-event-close::before{content:"×";display:block!important;font-size:22px!important;line-height:1!important;transform:translateY(-1px)!important}
+.employee-lottie{inset:0!important;background:transparent!important}
+.employee-lottie svg{display:block!important;max-width:100%!important;max-height:100%!important;background:transparent!important}
+.employee-lottie-fallback{position:absolute!important;inset:0!important;overflow:hidden!important;background:linear-gradient(180deg,#fff7ed 0%,#fef3c7 52%,#fff 100%)!important}
+.employee-lottie-fallback span{position:absolute!important;top:-48px!important;width:46px!important;height:28px!important;border-radius:80% 0 80% 0!important;background:#f97316!important;box-shadow:0 10px 24px #92400e24!important;animation:employee-fallback-leaf 5.5s linear infinite!important;opacity:.88!important}
+.employee-lottie-fallback span:nth-child(1){left:12%!important;animation-delay:-.4s!important;--dx:70px;--rot:420deg;background:#f97316!important}
+.employee-lottie-fallback span:nth-child(2){left:32%!important;animation-delay:-1.7s!important;--dx:-42px;--rot:520deg;background:#dc2626!important;transform:scale(.78)!important}
+.employee-lottie-fallback span:nth-child(3){left:53%!important;animation-delay:-2.8s!important;--dx:58px;--rot:460deg;background:#f59e0b!important;transform:scale(1.08)!important}
+.employee-lottie-fallback span:nth-child(4){left:72%!important;animation-delay:-.9s!important;--dx:-66px;--rot:560deg;background:#b45309!important;transform:scale(.88)!important}
+.employee-lottie-fallback span:nth-child(5){left:86%!important;animation-delay:-3.6s!important;--dx:-38px;--rot:500deg;background:#ef4444!important;transform:scale(.68)!important}
+@keyframes employee-fallback-leaf{0%{translate:0 -40px;rotate:0deg;opacity:0}10%{opacity:.95}100%{translate:var(--dx,40px) 460px;rotate:var(--rot,480deg);opacity:.9}}
+`;
+  const withoutOldTextFallback = source.replace(
+    /\.employee-lottie-fallback\{font-weight:800;color:#64748b;background:#fff;border-radius:999px;padding:10px 14px;box-shadow:0 8px 22px #0f172a14\}/g,
+    ""
+  );
+  return withoutOldTextFallback.includes(".employee-event-close::before")
+    ? withoutOldTextFallback
+    : `${withoutOldTextFallback}\n${fallbackCss}`;
+}
 
 function now() {
   return new Date().toISOString();
@@ -82,23 +294,53 @@ function loadEnvFile(filePath) {
 }
 
 
+const PROJECT2_DEMO_TASKS = new Map([
+  ["t1", "Подготовить структуру карточки"],
+  ["t2", "Добавить связи задач"],
+  ["t3", "Kanban и перенос задач"],
+  ["t4", "Бэклог"],
+  ["t5", "Проверка отчета"],
+  ["t6", "Ждем доступы"],
+  ["t7", "Справочник исполнителей"],
+  ["b1", "Разобрать требования по отчетности"],
+  ["b2", "Импорт старых задач"]
+]);
+
+function isProject2DemoTask(item) {
+  const id = String(item?.id || "");
+  const title = String(item?.title || "").trim();
+  return Boolean(id && PROJECT2_DEMO_TASKS.get(id) === title);
+}
+
 function normalizeProject2Payload(value) {
   const source = value && typeof value === "object" ? value : {};
+  const deletedPersonNames = Array.isArray(source.deletedPersonNames)
+    ? source.deletedPersonNames.filter(Boolean).slice(-1000)
+    : [];
   return {
     initialized: Boolean(source.initialized || Array.isArray(source.tasks) || Array.isArray(source.backlog)),
     updatedAt: source.updatedAt || now(),
-    people: Array.isArray(source.people) ? source.people : [],
+    people: Array.isArray(source.people)
+      ? source.people.filter(person => !deletedPersonNames.includes(String(person?.name || "")))
+      : [],
     categories: Array.isArray(source.categories) ? source.categories : [],
-    tasks: Array.isArray(source.tasks) ? source.tasks : [],
-    backlog: Array.isArray(source.backlog) ? source.backlog : [],
+    tasks: Array.isArray(source.tasks) ? source.tasks.filter(item => !isProject2DemoTask(item)) : [],
+    backlog: Array.isArray(source.backlog) ? source.backlog.filter(item => !isProject2DemoTask(item)) : [],
     deletedTaskIds: Array.isArray(source.deletedTaskIds) ? source.deletedTaskIds.filter(Boolean).slice(-1000) : [],
     deletedBacklogIds: Array.isArray(source.deletedBacklogIds) ? source.deletedBacklogIds.filter(Boolean).slice(-1000) : [],
+    deletedPersonNames,
     filters: source.filters && typeof source.filters === "object" ? source.filters : {}
   };
 }
 
 function project2ItemKey(item) {
   return String(item?.id || item?.number || item?.title || "");
+}
+
+function project2ItemKeys(item) {
+  const keys = [item?.id, item?.number];
+  if (!item?.id && !item?.number) keys.push(item?.title);
+  return keys.map(value => String(value || "")).filter(Boolean);
 }
 
 function project2Timestamp(value) {
@@ -118,25 +360,43 @@ function mergeProject2Items(currentItems = [], incomingItems = [], deletedIds = 
   const items = new Map();
   (Array.isArray(currentItems) ? currentItems : []).forEach(item => {
     const key = project2ItemKey(item);
-    if (key && !deletedIds.has(key)) items.set(key, item);
+    if (key && !project2ItemKeys(item).some(itemKey => deletedIds.has(itemKey))) items.set(key, item);
   });
   (Array.isArray(incomingItems) ? incomingItems : []).forEach(item => {
     const key = project2ItemKey(item);
-    if (key && !deletedIds.has(key)) items.set(key, mergeProject2Item(items.get(key), item));
+    if (key && !project2ItemKeys(item).some(itemKey => deletedIds.has(itemKey))) items.set(key, mergeProject2Item(items.get(key), item));
   });
   return Array.from(items.values()).sort((a, b) => (Number(a.number) || 0) - (Number(b.number) || 0));
+}
+
+function project2ItemCount(state = {}) {
+  return (Array.isArray(state.tasks) ? state.tasks.length : 0)
+    + (Array.isArray(state.backlog) ? state.backlog.length : 0)
+    + (Array.isArray(state.people) ? state.people.length : 0);
+}
+
+function project2DeleteCount(state = {}) {
+  return (Array.isArray(state.deletedTaskIds) ? state.deletedTaskIds.length : 0)
+    + (Array.isArray(state.deletedBacklogIds) ? state.deletedBacklogIds.length : 0)
+    + (Array.isArray(state.deletedPersonNames) ? state.deletedPersonNames.length : 0);
 }
 
 function mergeProject2State(currentState = {}, incomingState = {}) {
   const current = normalizeProject2Payload(currentState);
   const incoming = normalizeProject2Payload(incomingState);
+  if (project2ItemCount(current) > 0 && project2ItemCount(incoming) === 0 && project2DeleteCount(incoming) === 0) {
+    return current;
+  }
+  const deletedPersonNames = Array.from(new Set([...(current.deletedPersonNames || []), ...(incoming.deletedPersonNames || [])])).slice(-1000);
+  const peopleSource = Array.isArray(incoming.people) ? incoming.people : current.people;
   return {
     ...current,
     ...incoming,
-    people: incoming.people.length ? incoming.people : current.people,
+    people: (Array.isArray(peopleSource) ? peopleSource : []).filter(person => !deletedPersonNames.includes(String(person?.name || ""))),
     categories: incoming.categories.length ? incoming.categories : current.categories,
     deletedTaskIds: Array.from(new Set([...(current.deletedTaskIds || []), ...(incoming.deletedTaskIds || [])])).slice(-1000),
     deletedBacklogIds: Array.from(new Set([...(current.deletedBacklogIds || []), ...(incoming.deletedBacklogIds || [])])).slice(-1000),
+    deletedPersonNames,
     tasks: mergeProject2Items(current.tasks, incoming.tasks, new Set([...(current.deletedTaskIds || []), ...(incoming.deletedTaskIds || [])])),
     backlog: mergeProject2Items(current.backlog, incoming.backlog, new Set([...(current.deletedBacklogIds || []), ...(incoming.deletedBacklogIds || [])])),
     filters: { ...(current.filters || {}), ...(incoming.filters || {}) },
