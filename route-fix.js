@@ -3,7 +3,11 @@ const http = require("http");
 const WORKING_BRANCH = "fix-report-save-symbols-20260903";
 const WORKING_APP_URL = `https://raw.githubusercontent.com/ludmila123456789k-cmd/dashboards2/${WORKING_BRANCH}/public/app.js`;
 const EVENT_ASSET_BASE_URL = `https://raw.githubusercontent.com/ludmila123456789k-cmd/dashboards2/${WORKING_BRANCH}/public/event-assets/`;
+const APP_SCRIPT_CACHE_MS = 5 * 60 * 1000;
 const originalCreateServer = http.createServer.bind(http);
+let appScriptCache = null;
+let appScriptCacheAt = 0;
+let appScriptFetchPromise = null;
 
 function patchOuterAppScript(source) {
   return source
@@ -222,9 +226,22 @@ function eventAssetContentType(assetPath) {
 }
 
 async function fetchWorkingAppScript() {
-  const response = await fetch(WORKING_APP_URL, { cache: "no-store" });
-  if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
-  return patchAppScript(await response.text());
+  const now = Date.now();
+  if (appScriptCache && now - appScriptCacheAt < APP_SCRIPT_CACHE_MS) return appScriptCache;
+  if (appScriptFetchPromise) return appScriptFetchPromise;
+  appScriptFetchPromise = (async () => {
+    const response = await fetch(WORKING_APP_URL, { cache: "no-store" });
+    if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
+    const patched = patchAppScript(await response.text());
+    appScriptCache = patched;
+    appScriptCacheAt = Date.now();
+    return patched;
+  })();
+  try {
+    return await appScriptFetchPromise;
+  } finally {
+    appScriptFetchPromise = null;
+  }
 }
 
 async function serveEventAsset(pathname, res) {
@@ -253,7 +270,7 @@ http.createServer = function createRouteFixedServer(listener) {
         const script = await fetchWorkingAppScript();
         res.writeHead(200, {
           "Content-Type": "application/javascript; charset=utf-8",
-          "Cache-Control": "no-store, no-cache, must-revalidate"
+          "Cache-Control": "private, max-age=60"
         });
         res.end(script);
       } catch (error) {
@@ -279,4 +296,5 @@ http.createServer = function createRouteFixedServer(listener) {
   });
 };
 
+fetchWorkingAppScript().catch(() => {});
 require("./server-hotfix.js");
