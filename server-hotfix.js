@@ -296,22 +296,43 @@ function removeProject2Duplicates(primaryItems = [], secondaryItems = []) {
 }
 
 function project2PersonKey(person) {
+  const draftId = String(person?._draftId || person?.id || "").trim().toLowerCase();
+  if (draftId) return draftId;
   const name = String(person?.name || "").trim().toLowerCase();
   const telegram = String(person?.telegram || "").trim().toLowerCase();
-  return name || telegram || "";
+  return telegram || name || "";
+}
+
+function project2PersonName(personOrName) {
+  return String(typeof personOrName === "object" ? personOrName?.name : personOrName || "").trim().toLowerCase();
 }
 
 function mergeProject2People(currentPeople = [], incomingPeople = [], deletedNames = new Set()) {
   const people = new Map();
-  (Array.isArray(currentPeople) ? currentPeople : []).forEach(person => {
+  const deleted = new Set(Array.from(deletedNames).map(project2PersonName).filter(Boolean));
+  const currentList = Array.isArray(currentPeople) ? currentPeople : [];
+  currentList.forEach(person => {
     const key = project2PersonKey(person);
-    const name = String(person?.name || "");
-    if (key && !deletedNames.has(name)) people.set(key, person);
+    const name = project2PersonName(person);
+    if (key && !deleted.has(name)) people.set(key, person);
   });
   (Array.isArray(incomingPeople) ? incomingPeople : []).forEach(person => {
-    const key = project2PersonKey(person);
-    const name = String(person?.name || "");
-    if (!key || deletedNames.has(name)) return;
+    let key = project2PersonKey(person);
+    const name = project2PersonName(person);
+    if (!key || deleted.has(name)) return;
+    if (!people.has(key) && name) {
+      const sameName = currentList.find(currentPerson => project2PersonName(currentPerson) === name);
+      const sameNameKey = project2PersonKey(sameName);
+      if (sameNameKey && !deleted.has(project2PersonName(sameName))) key = sameNameKey;
+    }
+    const draftIndex = Number(person?._draftIndex);
+    if (!people.has(key) && Number.isInteger(draftIndex) && draftIndex >= 0 && draftIndex < currentList.length) {
+      const currentAtIndex = currentList[draftIndex];
+      const currentKey = project2PersonKey(currentAtIndex);
+      if (currentKey && !deleted.has(project2PersonName(currentAtIndex))) {
+        key = currentKey;
+      }
+    }
     people.set(key, { ...(people.get(key) || {}), ...person });
   });
   return Array.from(people.values());
@@ -353,11 +374,11 @@ function mergeProject2State(currentState = {}, incomingState = {}) {
     .filter(name => !incomingPeopleNames.has(String(name || "")) && !rawIncomingPeopleNames.has(String(name || "")))
     .slice(-1000);
   const hasIncomingPeople = Array.isArray(sanitizedIncomingState?.people);
-  const deletedPersonSet = new Set(deletedPersonNames);
+  const deletedPersonSet = new Set(deletedPersonNames.map(project2PersonName).filter(Boolean));
   const peopleSource = hasIncomingPeople
     ? mergeProject2People(current.people, incoming.people, deletedPersonSet)
     : (Array.isArray(current.people)
-        ? current.people.filter(person => !deletedPersonSet.has(String(person?.name || "")))
+        ? current.people.filter(person => !deletedPersonSet.has(project2PersonName(person)))
         : []);
   const deletedTaskIds = Array.from(new Set([...(current.deletedTaskIds || []), ...(incoming.deletedTaskIds || [])])).slice(-1000);
   const deletedBacklogIds = Array.from(new Set([...(current.deletedBacklogIds || []), ...(incoming.deletedBacklogIds || [])])).slice(-1000);
