@@ -357,6 +357,28 @@ function project2TaskCount(state = {}) {
     + (Array.isArray(state.backlog) ? state.backlog.length : 0);
 }
 
+function project2BackupCandidate(backup) {
+  const project2 = backup?.workspace?.sections?.project2;
+  if (!project2 || typeof project2 !== "object") return null;
+  const normalized = normalizeProject2Payload(project2);
+  return project2TaskCount(normalized) > 0 ? normalized : null;
+}
+
+function readLatestProject2Backup() {
+  if (!fs.existsSync(BACKUP_DIR)) return null;
+  const backups = fs.readdirSync(BACKUP_DIR)
+    .filter(name => name.endsWith(".json"))
+    .map(name => ({ file: path.join(BACKUP_DIR, name), time: fs.statSync(path.join(BACKUP_DIR, name)).mtimeMs }))
+    .sort((a, b) => b.time - a.time);
+  for (const backup of backups) {
+    try {
+      const candidate = project2BackupCandidate(JSON.parse(fs.readFileSync(backup.file, "utf8")));
+      if (candidate) return candidate;
+    } catch (error) {}
+  }
+  return null;
+}
+
 function project2DeleteCount(state = {}) {
   return (Array.isArray(state.deletedTaskIds) ? state.deletedTaskIds.length : 0)
     + (Array.isArray(state.deletedBacklogIds) ? state.deletedBacklogIds.length : 0)
@@ -439,7 +461,18 @@ async function handleProject2(req, res) {
   store.workspace.sections = store.workspace.sections || {};
 
   if (req.method === "GET") {
-    sendJson(res, 200, { project2: normalizeProject2Payload(store.workspace.sections.project2 || {}) });
+    const currentProject2 = normalizeProject2Payload(store.workspace.sections.project2 || {});
+    if (project2TaskCount(currentProject2) === 0) {
+      const backupProject2 = readLatestProject2Backup();
+      if (backupProject2) {
+        store.workspace.sections.project2 = backupProject2;
+        store.workspace.updatedAt = now();
+        writeStore(store);
+        sendJson(res, 200, { project2: backupProject2, restoredFromBackup: true });
+        return;
+      }
+    }
+    sendJson(res, 200, { project2: currentProject2 });
     return;
   }
 
@@ -451,6 +484,16 @@ async function handleProject2(req, res) {
       const incomingProject2 = normalizeProject2Payload(payload.project2 || payload);
       const emptyIncomingWithoutDeletes = project2TaskCount(incomingProject2) === 0
         && project2DeleteCount(incomingProject2) === 0;
+      if (project2TaskCount(currentProject2) === 0 && emptyIncomingWithoutDeletes) {
+        const backupProject2 = readLatestProject2Backup();
+        if (backupProject2) {
+          store.workspace.sections.project2 = backupProject2;
+          store.workspace.updatedAt = now();
+          writeStore(store);
+          sendJson(res, 200, { project2: backupProject2, updatedAt: store.workspace.updatedAt, restoredFromBackup: true });
+          return;
+        }
+      }
       store.workspace.sections.project2 = project2TaskCount(currentProject2) > 0 && emptyIncomingWithoutDeletes
         ? currentProject2
         : incomingProject2;
