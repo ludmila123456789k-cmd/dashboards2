@@ -248,6 +248,12 @@ function project2ItemKey(item) {
   return String(item?.id || item?.number || item?.title || "");
 }
 
+function project2ItemKeys(item) {
+  const keys = [item?.id, item?.number];
+  if (!item?.id && !item?.number) keys.push(item?.title);
+  return keys.map(value => String(value || "")).filter(Boolean);
+}
+
 function project2Timestamp(value) {
   const time = Date.parse(value || "");
   return Number.isFinite(time) ? time : 0;
@@ -265,13 +271,20 @@ function mergeProject2Items(currentItems = [], incomingItems = [], deletedIds = 
   const items = new Map();
   (Array.isArray(currentItems) ? currentItems : []).forEach(item => {
     const key = project2ItemKey(item);
-    if (key && !deletedIds.has(key)) items.set(key, item);
+    if (key && !project2ItemKeys(item).some(itemKey => deletedIds.has(itemKey))) items.set(key, item);
   });
   (Array.isArray(incomingItems) ? incomingItems : []).forEach(item => {
     const key = project2ItemKey(item);
-    if (key && !deletedIds.has(key)) items.set(key, mergeProject2Item(items.get(key), item));
+    if (key && !project2ItemKeys(item).some(itemKey => deletedIds.has(itemKey))) items.set(key, mergeProject2Item(items.get(key), item));
   });
   return Array.from(items.values()).sort((a, b) => (Number(a.number) || 0) - (Number(b.number) || 0));
+}
+
+function removeProject2Duplicates(primaryItems = [], secondaryItems = []) {
+  const primaryKeys = new Set((Array.isArray(primaryItems) ? primaryItems : []).flatMap(project2ItemKeys));
+  return (Array.isArray(secondaryItems) ? secondaryItems : []).filter(item =>
+    !project2ItemKeys(item).some(key => primaryKeys.has(key))
+  );
 }
 
 function project2ItemCount(state = {}) {
@@ -294,16 +307,28 @@ function mergeProject2State(currentState = {}, incomingState = {}) {
   }
   const deletedPersonNames = Array.from(new Set([...(current.deletedPersonNames || []), ...(incoming.deletedPersonNames || [])])).slice(-1000);
   const peopleSource = Array.isArray(incoming.people) ? incoming.people : current.people;
+  const deletedTaskIds = Array.from(new Set([...(current.deletedTaskIds || []), ...(incoming.deletedTaskIds || [])])).slice(-1000);
+  const deletedBacklogIds = Array.from(new Set([...(current.deletedBacklogIds || []), ...(incoming.deletedBacklogIds || [])])).slice(-1000);
+  const mergedTasks = mergeProject2Items(current.tasks, incoming.tasks, new Set(deletedTaskIds));
+  const mergedBacklog = mergeProject2Items(current.backlog, incoming.backlog, new Set(deletedBacklogIds));
+  const incomingTaskKeys = new Set((Array.isArray(incoming.tasks) ? incoming.tasks : []).flatMap(project2ItemKeys));
+  const incomingBacklogKeys = new Set((Array.isArray(incoming.backlog) ? incoming.backlog : []).flatMap(project2ItemKeys));
+  const tasks = incomingBacklogKeys.size
+    ? mergedTasks.filter(item => !project2ItemKeys(item).some(key => incomingBacklogKeys.has(key)))
+    : removeProject2Duplicates(mergedBacklog, mergedTasks);
+  const backlog = incomingTaskKeys.size
+    ? mergedBacklog.filter(item => !project2ItemKeys(item).some(key => incomingTaskKeys.has(key)))
+    : removeProject2Duplicates(tasks, mergedBacklog);
   return {
     ...current,
     ...incoming,
     people: (Array.isArray(peopleSource) ? peopleSource : []).filter(person => !deletedPersonNames.includes(String(person?.name || ""))),
     categories: incoming.categories.length ? incoming.categories : current.categories,
-    deletedTaskIds: Array.from(new Set([...(current.deletedTaskIds || []), ...(incoming.deletedTaskIds || [])])).slice(-1000),
-    deletedBacklogIds: Array.from(new Set([...(current.deletedBacklogIds || []), ...(incoming.deletedBacklogIds || [])])).slice(-1000),
+    deletedTaskIds,
+    deletedBacklogIds,
     deletedPersonNames,
-    tasks: mergeProject2Items(current.tasks, incoming.tasks, new Set([...(current.deletedTaskIds || []), ...(incoming.deletedTaskIds || [])])),
-    backlog: mergeProject2Items(current.backlog, incoming.backlog, new Set([...(current.deletedBacklogIds || []), ...(incoming.deletedBacklogIds || [])])),
+    tasks,
+    backlog,
     filters: { ...(current.filters || {}), ...(incoming.filters || {}) },
     initialized: true,
     updatedAt: now()
