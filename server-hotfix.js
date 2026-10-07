@@ -144,7 +144,7 @@ function patchProject2AppScript(source) {
 
   html = html.replace(
     "function mergeProject2States(base={},extra={}){const taskDeletes=Array.from(new Set([...(base.deletedTaskIds||[]),...(extra.deletedTaskIds||[])]));const backlogDeletes=Array.from(new Set([...(base.deletedBacklogIds||[]),...(extra.deletedBacklogIds||[])]));return{...base,...extra,people:Array.isArray(extra.people)&&extra.people.length?extra.people:base.people,categories:Array.isArray(extra.categories)&&extra.categories.length?extra.categories:base.categories,deletedTaskIds:taskDeletes,deletedBacklogIds:backlogDeletes,tasks:mergeProject2List(base.tasks,extra.tasks,taskDeletes),backlog:mergeProject2List(base.backlog,extra.backlog,backlogDeletes),filters:{...(base.filters||{}),...(extra.filters||{})},initialized:true,updatedAt:new Date().toISOString()}}",
-    "function mergeProject2States(base={},extra={}){const taskDeletes=Array.from(new Set([...(base.deletedTaskIds||[]),...(extra.deletedTaskIds||[])]));const backlogDeletes=Array.from(new Set([...(base.deletedBacklogIds||[]),...(extra.deletedBacklogIds||[])]));const personDeletes=Array.from(new Set([...(base.deletedPersonNames||[]),...(extra.deletedPersonNames||[])]));const peopleSource=Array.isArray(extra.people)?extra.people:base.people;return{...base,...extra,people:(Array.isArray(peopleSource)?peopleSource:[]).filter(p=>!personDeletes.includes(String(p?.name||''))),categories:Array.isArray(extra.categories)&&extra.categories.length?extra.categories:base.categories,deletedTaskIds:taskDeletes,deletedBacklogIds:backlogDeletes,deletedPersonNames:personDeletes,tasks:mergeProject2List(base.tasks,extra.tasks,taskDeletes),backlog:mergeProject2List(base.backlog,extra.backlog,backlogDeletes),filters:{...(base.filters||{}),...(extra.filters||{})},initialized:true,updatedAt:new Date().toISOString()}}"
+    "function mergeProject2States(base={},extra={}){const taskDeletes=Array.from(new Set([...(base.deletedTaskIds||[]),...(extra.deletedTaskIds||[])]));const backlogDeletes=Array.from(new Set([...(base.deletedBacklogIds||[]),...(extra.deletedBacklogIds||[])]));const incomingPeopleNames=new Set((Array.isArray(extra.people)?extra.people:[]).map(p=>String(p?.name||'')).filter(Boolean));const personDeletes=Array.from(new Set([...(base.deletedPersonNames||[]),...(extra.deletedPersonNames||[])])).filter(name=>!incomingPeopleNames.has(String(name||'')));const peopleSource=Array.isArray(extra.people)?extra.people:base.people;return{...base,...extra,people:(Array.isArray(peopleSource)?peopleSource:[]).filter(p=>!personDeletes.includes(String(p?.name||''))),categories:Array.isArray(extra.categories)&&extra.categories.length?extra.categories:base.categories,deletedTaskIds:taskDeletes,deletedBacklogIds:backlogDeletes,deletedPersonNames:personDeletes,tasks:mergeProject2List(base.tasks,extra.tasks,taskDeletes),backlog:mergeProject2List(base.backlog,extra.backlog,backlogDeletes),filters:{...(base.filters||{}),...(extra.filters||{})},initialized:true,updatedAt:new Date().toISOString()}}"
   );
 
   html = html.replace(
@@ -309,7 +309,12 @@ function mergeProject2State(currentState = {}, incomingState = {}) {
   if (project2ItemCount(current) > 0 && project2ItemCount(incoming) === 0 && project2DeleteCount(incoming) === 0) {
     return current;
   }
-  const deletedPersonNames = Array.from(new Set([...(current.deletedPersonNames || []), ...(incoming.deletedPersonNames || [])])).slice(-1000);
+  const incomingPeopleNames = new Set((Array.isArray(incoming.people) ? incoming.people : [])
+    .map(person => String(person?.name || ""))
+    .filter(Boolean));
+  const deletedPersonNames = Array.from(new Set([...(current.deletedPersonNames || []), ...(incoming.deletedPersonNames || [])]))
+    .filter(name => !incomingPeopleNames.has(String(name || "")))
+    .slice(-1000);
   const peopleSource = Array.isArray(incoming.people) ? incoming.people : current.people;
   const deletedTaskIds = Array.from(new Set([...(current.deletedTaskIds || []), ...(incoming.deletedTaskIds || [])])).slice(-1000);
   const deletedBacklogIds = Array.from(new Set([...(current.deletedBacklogIds || []), ...(incoming.deletedBacklogIds || [])])).slice(-1000);
