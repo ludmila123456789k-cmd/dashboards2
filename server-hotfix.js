@@ -352,6 +352,11 @@ function project2ItemCount(state = {}) {
     + (Array.isArray(state.people) ? state.people.length : 0);
 }
 
+function project2TaskCount(state = {}) {
+  return (Array.isArray(state.tasks) ? state.tasks.length : 0)
+    + (Array.isArray(state.backlog) ? state.backlog.length : 0);
+}
+
 function project2DeleteCount(state = {}) {
   return (Array.isArray(state.deletedTaskIds) ? state.deletedTaskIds.length : 0)
     + (Array.isArray(state.deletedBacklogIds) ? state.deletedBacklogIds.length : 0)
@@ -442,7 +447,13 @@ async function handleProject2(req, res) {
     try {
       const payload = JSON.parse(await readBody(req) || "{}");
       ensureDailyBackup();
-      store.workspace.sections.project2 = normalizeProject2Payload(payload.project2 || payload);
+      const currentProject2 = normalizeProject2Payload(store.workspace.sections.project2 || {});
+      const incomingProject2 = normalizeProject2Payload(payload.project2 || payload);
+      const emptyIncomingWithoutDeletes = project2TaskCount(incomingProject2) === 0
+        && project2DeleteCount(incomingProject2) === 0;
+      store.workspace.sections.project2 = project2TaskCount(currentProject2) > 0 && emptyIncomingWithoutDeletes
+        ? currentProject2
+        : incomingProject2;
       store.workspace.updatedAt = now();
       writeStore(store);
       sendJson(res, 200, { project2: store.workspace.sections.project2, updatedAt: store.workspace.updatedAt });
