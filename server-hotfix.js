@@ -442,7 +442,7 @@ async function handleProject2(req, res) {
     try {
       const payload = JSON.parse(await readBody(req) || "{}");
       ensureDailyBackup();
-      store.workspace.sections.project2 = mergeProject2State(store.workspace.sections.project2 || {}, payload.project2 || payload);
+      store.workspace.sections.project2 = normalizeProject2Payload(payload.project2 || payload);
       store.workspace.updatedAt = now();
       writeStore(store);
       sendJson(res, 200, { project2: store.workspace.sections.project2, updatedAt: store.workspace.updatedAt });
