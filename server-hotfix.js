@@ -304,8 +304,19 @@ function project2DeleteCount(state = {}) {
 }
 
 function mergeProject2State(currentState = {}, incomingState = {}) {
+  const rawIncomingPeopleNames = new Set((Array.isArray(incomingState?.people) ? incomingState.people : [])
+    .map(person => String(person?.name || ""))
+    .filter(Boolean));
+  const sanitizedIncomingState = incomingState && typeof incomingState === "object"
+    ? {
+        ...incomingState,
+        deletedPersonNames: Array.isArray(incomingState.deletedPersonNames)
+          ? incomingState.deletedPersonNames.filter(name => !rawIncomingPeopleNames.has(String(name || "")))
+          : incomingState.deletedPersonNames
+      }
+    : incomingState;
   const current = normalizeProject2Payload(currentState);
-  const incoming = normalizeProject2Payload(incomingState);
+  const incoming = normalizeProject2Payload(sanitizedIncomingState);
   if (project2ItemCount(current) > 0 && project2ItemCount(incoming) === 0 && project2DeleteCount(incoming) === 0) {
     return current;
   }
@@ -313,7 +324,7 @@ function mergeProject2State(currentState = {}, incomingState = {}) {
     .map(person => String(person?.name || ""))
     .filter(Boolean));
   const deletedPersonNames = Array.from(new Set([...(current.deletedPersonNames || []), ...(incoming.deletedPersonNames || [])]))
-    .filter(name => !incomingPeopleNames.has(String(name || "")))
+    .filter(name => !incomingPeopleNames.has(String(name || "")) && !rawIncomingPeopleNames.has(String(name || "")))
     .slice(-1000);
   const peopleSource = Array.isArray(incoming.people) ? incoming.people : current.people;
   const deletedTaskIds = Array.from(new Set([...(current.deletedTaskIds || []), ...(incoming.deletedTaskIds || [])])).slice(-1000);

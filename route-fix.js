@@ -11,6 +11,9 @@ function patchOuterAppScript(source) {
     .replace(/title="Доска проектов 2"/g, 'title="Доска проектов"')
     .replace(/<section class="project2-embed">\s*<iframe class="project2-frame" title="Доска проектов"><\/iframe>\s*<\/section>/g, '<section class="project2-embed" style="margin:0;padding:0;width:100%;height:calc(100vh - 100px);min-height:780px;overflow:visible"><iframe class="project2-frame" title="Доска проектов" style="display:block;width:100%;height:100%;min-height:780px;border:0;background:#f6f8fb"></iframe></section>')
     .replace(/const section = SECTIONS\.find\(item => item\.id === activeSection\) \|\| SECTIONS\[0\];/, 'if (activeSection === "board") activeSection = "project2";\n  const section = SECTIONS.find(item => item.id === activeSection) || SECTIONS[0];')
+    .replace(/function navigateToSection\(sectionId\) \{\n  if \(!SECTIONS\.some\(item => item\.id === sectionId\)\) return;/, 'function navigateToSection(sectionId) {\n  if (sectionId === "board") sectionId = "project2";\n  if (!SECTIONS.some(item => item.id === sectionId)) return;')
+    .replace(/const fromUrl = readViewStateParam\("section"\);\n    if \(SECTIONS\.some\(item => item\.id === fromUrl\)\) return fromUrl;/, 'const fromUrl = readViewStateParam("section");\n    if (fromUrl === "board" && SECTIONS.some(item => item.id === "project2")) return "project2";\n    if (SECTIONS.some(item => item.id === fromUrl)) return fromUrl;')
+    .replace(/return SECTIONS\.some\(item => item\.id === stored\) \? stored : "roadmap";/, 'return stored === "board" && SECTIONS.some(item => item.id === "project2") ? "project2" : SECTIONS.some(item => item.id === stored) ? stored : "roadmap";')
     .replace(/localStorage\.setItem\(ACTIVE_SECTION_KEY, activeSection\);/g, 'localStorage.setItem(ACTIVE_SECTION_KEY, activeSection === "board" ? "project2" : activeSection);');
 }
 
