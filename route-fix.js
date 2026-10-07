@@ -1,6 +1,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const zlib = require("zlib");
 
 const WORKING_BRANCH = "fix-report-save-symbols-20260903";
 const WORKING_APP_URL = `https://raw.githubusercontent.com/ludmila123456789k-cmd/dashboards2/${WORKING_BRANCH}/public/app.js`;
@@ -12,6 +13,8 @@ const originalCreateServer = http.createServer.bind(http);
 let appScriptCache = null;
 let appScriptCacheAt = 0;
 let appScriptFetchPromise = null;
+let outerAppScriptCache = null;
+let project2HtmlCache = null;
 
 function readAppScriptDiskCache() {
   const cachePaths = Array.from(new Set([APP_SCRIPT_DISK_CACHE, APP_SCRIPT_BUNDLED_CACHE]));
@@ -256,6 +259,56 @@ function patchAppScript(source) {
   return patchEmployeeEvents(patchProject2Html(patchOuterAppScript(source)));
 }
 
+function patchLocalOuterAppScript(source) {
+  return patchEmployeeEvents(source
+    .replace(/\{ id: "board", label: "Доска проектов", icon: "board" \}/g, '{ id: "project2", label: "Доска проектов", icon: "board" }')
+    .replace(/activeSection === "board"/g, 'activeSection === "project2"')
+    .replace(/section\.id === "board"/g, 'section.id === "project2"')
+    .replace(/\$\{!isPublicView && activeSection === "project2" \? renderBoardCategorySidebar\(\) : ""\}/g, "")
+    .replace(/\$\{section\.id === "project2" \? renderBoardToolbar\(\) : ""\}/g, "")
+    .replace(/if \(sectionId === "settings"\) return "";/g, 'if (sectionId === "settings" || sectionId === "project2") return "";')
+    .replace(/if \(sectionId === "board"\) return renderBoard\(\);/, 'if (sectionId === "project2") return renderProject2Embed();\n  if (sectionId === "board") return renderBoard();')
+    .replace(/function renderBoard\(\) \{/, 'function renderProject2Embed() {\n  return `<section class="project2-embed" style="margin:0;padding:0;width:100%;height:calc(100vh - 100px);min-height:780px;overflow:visible"><iframe class="project2-frame" title="Доска проектов" src="/project2.html" style="display:block;width:100%;height:100%;min-height:780px;border:0;background:#f6f8fb"></iframe></section>`;\n}\n\nfunction renderBoard() {')
+    .replace(/const fromUrl = readViewStateParam\("section"\);\n    if \(SECTIONS\.some\(item => item\.id === fromUrl\)\) return fromUrl;/, 'const fromUrl = readViewStateParam("section");\n    if (fromUrl === "board") return "project2";\n    if (SECTIONS.some(item => item.id === fromUrl)) return fromUrl;')
+    .replace(/return SECTIONS\.some\(item => item\.id === stored\) \? stored : "roadmap";/, 'return stored === "board" ? "project2" : SECTIONS.some(item => item.id === stored) ? stored : "roadmap";')
+  );
+}
+
+function sendContent(req, res, body, contentType, cacheControl = "private, max-age=60") {
+  const accepts = String(req.headers["accept-encoding"] || "");
+  const buffer = Buffer.isBuffer(body) ? body : Buffer.from(String(body), "utf8");
+  if (accepts.includes("br")) {
+    const encoded = zlib.brotliCompressSync(buffer, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5 } });
+    res.writeHead(200, { "Content-Type": contentType, "Content-Encoding": "br", "Cache-Control": cacheControl, "Vary": "Accept-Encoding" });
+    res.end(encoded);
+    return;
+  }
+  if (accepts.includes("gzip")) {
+    const encoded = zlib.gzipSync(buffer, { level: 6 });
+    res.writeHead(200, { "Content-Type": contentType, "Content-Encoding": "gzip", "Cache-Control": cacheControl, "Vary": "Accept-Encoding" });
+    res.end(encoded);
+    return;
+  }
+  res.writeHead(200, { "Content-Type": contentType, "Cache-Control": cacheControl, "Vary": "Accept-Encoding" });
+  res.end(buffer);
+}
+
+function fetchOuterAppScript() {
+  if (outerAppScriptCache) return outerAppScriptCache;
+  const appPath = path.join(__dirname, "public", "app.js");
+  outerAppScriptCache = patchLocalOuterAppScript(fs.readFileSync(appPath, "utf8"));
+  return outerAppScriptCache;
+}
+
+async function fetchProject2Html() {
+  if (project2HtmlCache) return project2HtmlCache;
+  const script = readAppScriptDiskCache() || await fetchWorkingAppScript();
+  const match = script.match(/const PROJECT2_HTML_BASE64 = '([^']+)'/);
+  if (!match) throw new Error("Доска проектов не найдена");
+  project2HtmlCache = Buffer.from(match[1], "base64").toString("utf8");
+  return project2HtmlCache;
+}
+
 function eventAssetContentType(assetPath) {
   const value = String(assetPath || "").toLowerCase();
   if (value.endsWith(".json")) return "application/json; charset=utf-8";
@@ -314,15 +367,20 @@ http.createServer = function createRouteFixedServer(listener) {
     const pathname = new URL(req.url || "/", "http://localhost").pathname;
     if (req.method === "GET" && pathname === "/app.js") {
       try {
-        const script = await fetchWorkingAppScript();
-        res.writeHead(200, {
-          "Content-Type": "application/javascript; charset=utf-8",
-          "Cache-Control": "private, max-age=60"
-        });
-        res.end(script);
+        sendContent(req, res, fetchOuterAppScript(), "application/javascript; charset=utf-8");
       } catch (error) {
         res.writeHead(502, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
         res.end(`Не удалось загрузить новый интерфейс: ${error.message}`);
+      }
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/project2.html") {
+      try {
+        sendContent(req, res, await fetchProject2Html(), "text/html; charset=utf-8");
+      } catch (error) {
+        res.writeHead(502, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
+        res.end(`Не удалось загрузить доску проектов: ${error.message}`);
       }
       return;
     }
