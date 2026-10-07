@@ -97,6 +97,10 @@ function patchProject2Html(source) {
     "let filters={search:'',status:'',priority:'',assignee:'',category:'',overdue:false,month:new Date().toISOString().slice(0,7)};"
   );
   html = html.replace(
+    /let tasks=\[[\s\S]*?\];\s*let backlog=\[[\s\S]*?\];\s*function task/,
+    "let tasks=[];\n    let backlog=[];\n    function task"
+  );
+  html = html.replace(
     "function render(){document.querySelectorAll('[data-nav]').forEach(btn=>btn.classList.toggle('active',btn.dataset.nav===section));root.innerHTML=section==='reports'?reportsView():section==='projects'?projectView():section==='marketing'?marketingView():section==='calendar'?calendarView():section==='board'?boardView():settingsView();initSeasonalLotties()}",
     "function render(){if(section==='board')section='projects';document.querySelectorAll('[data-nav]').forEach(btn=>btn.classList.toggle('active',btn.dataset.nav===section));root.innerHTML=section==='reports'?reportsView():section==='projects'?projectView():section==='marketing'?marketingView():section==='calendar'?calendarView():settingsView();initSeasonalLotties()}"
   );
