@@ -380,8 +380,19 @@ function mergeProject2State(currentState = {}, incomingState = {}) {
     : (Array.isArray(current.people)
         ? current.people.filter(person => !deletedPersonSet.has(project2PersonName(person)))
         : []);
-  const deletedTaskIds = Array.from(new Set([...(current.deletedTaskIds || []), ...(incoming.deletedTaskIds || [])])).slice(-1000);
-  const deletedBacklogIds = Array.from(new Set([...(current.deletedBacklogIds || []), ...(incoming.deletedBacklogIds || [])])).slice(-1000);
+  const currentTaskTotal = (Array.isArray(current.tasks) ? current.tasks.length : 0)
+    + (Array.isArray(current.backlog) ? current.backlog.length : 0);
+  const incomingTaskTotal = (Array.isArray(incoming.tasks) ? incoming.tasks.length : 0)
+    + (Array.isArray(incoming.backlog) ? incoming.backlog.length : 0);
+  const incomingDeleteTotal = (Array.isArray(incoming.deletedTaskIds) ? incoming.deletedTaskIds.length : 0)
+    + (Array.isArray(incoming.deletedBacklogIds) ? incoming.deletedBacklogIds.length : 0);
+  const ignoreTaskDeletes = currentTaskTotal > 0 && incomingTaskTotal === 0 && incomingDeleteTotal > 0;
+  const deletedTaskIds = ignoreTaskDeletes
+    ? (current.deletedTaskIds || [])
+    : Array.from(new Set([...(current.deletedTaskIds || []), ...(incoming.deletedTaskIds || [])])).slice(-1000);
+  const deletedBacklogIds = ignoreTaskDeletes
+    ? (current.deletedBacklogIds || [])
+    : Array.from(new Set([...(current.deletedBacklogIds || []), ...(incoming.deletedBacklogIds || [])])).slice(-1000);
   const mergedTasks = mergeProject2Items(current.tasks, incoming.tasks, new Set(deletedTaskIds));
   const mergedBacklog = mergeProject2Items(current.backlog, incoming.backlog, new Set(deletedBacklogIds));
   const incomingTaskKeys = new Set((Array.isArray(incoming.tasks) ? incoming.tasks : []).flatMap(project2ItemKeys));
