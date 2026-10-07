@@ -235,9 +235,7 @@ function normalizeProject2Payload(value) {
   return {
     initialized: Boolean(source.initialized || Array.isArray(source.tasks) || Array.isArray(source.backlog)),
     updatedAt: source.updatedAt || now(),
-    people: Array.isArray(source.people)
-      ? source.people.filter(person => !deletedPersonNames.includes(String(person?.name || "")))
-      : [],
+    people: Array.isArray(source.people) ? source.people : [],
     categories: Array.isArray(source.categories) ? source.categories : [],
     tasks: Array.isArray(source.tasks) ? source.tasks.filter(item => !isProject2DemoTask(item)) : [],
     backlog: Array.isArray(source.backlog) ? source.backlog.filter(item => !isProject2DemoTask(item)) : [],
@@ -326,7 +324,12 @@ function mergeProject2State(currentState = {}, incomingState = {}) {
   const deletedPersonNames = Array.from(new Set([...(current.deletedPersonNames || []), ...(incoming.deletedPersonNames || [])]))
     .filter(name => !incomingPeopleNames.has(String(name || "")) && !rawIncomingPeopleNames.has(String(name || "")))
     .slice(-1000);
-  const peopleSource = Array.isArray(incoming.people) ? incoming.people : current.people;
+  const hasIncomingPeople = Array.isArray(sanitizedIncomingState?.people);
+  const peopleSource = hasIncomingPeople
+    ? incoming.people
+    : (Array.isArray(current.people)
+        ? current.people.filter(person => !deletedPersonNames.includes(String(person?.name || "")))
+        : []);
   const deletedTaskIds = Array.from(new Set([...(current.deletedTaskIds || []), ...(incoming.deletedTaskIds || [])])).slice(-1000);
   const deletedBacklogIds = Array.from(new Set([...(current.deletedBacklogIds || []), ...(incoming.deletedBacklogIds || [])])).slice(-1000);
   const mergedTasks = mergeProject2Items(current.tasks, incoming.tasks, new Set(deletedTaskIds));
@@ -342,7 +345,7 @@ function mergeProject2State(currentState = {}, incomingState = {}) {
   return {
     ...current,
     ...incoming,
-    people: (Array.isArray(peopleSource) ? peopleSource : []).filter(person => !deletedPersonNames.includes(String(person?.name || ""))),
+    people: Array.isArray(peopleSource) ? peopleSource : [],
     categories: incoming.categories.length ? incoming.categories : current.categories,
     deletedTaskIds,
     deletedBacklogIds,
