@@ -316,7 +316,8 @@ async function fetchProject2Html() {
 .card{min-width:0!important}
 .meta{gap:4px!important}
 .card button{padding:8px 9px!important}
-html,body{overflow-x:hidden!important}</style>`
+html,body{overflow-x:hidden!important;background:#fff!important}
+.content{background:#fff!important}</style>`
   );
   return project2HtmlCache;
 }
