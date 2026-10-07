@@ -267,12 +267,20 @@ function project2Timestamp(value) {
   return Number.isFinite(time) ? time : 0;
 }
 
+function isProject2PlaceholderTitle(value) {
+  return String(value || "").trim().toLowerCase() === "новая задача";
+}
+
 function mergeProject2Item(currentItem, incomingItem) {
   if (!currentItem) return incomingItem;
   if (!incomingItem) return currentItem;
   const currentTime = project2Timestamp(currentItem.updatedAt || currentItem.createdAt);
   const incomingTime = project2Timestamp(incomingItem.updatedAt || incomingItem.createdAt);
-  return incomingTime >= currentTime ? { ...currentItem, ...incomingItem } : { ...incomingItem, ...currentItem };
+  const merged = incomingTime >= currentTime ? { ...currentItem, ...incomingItem } : { ...incomingItem, ...currentItem };
+  if (!isProject2PlaceholderTitle(currentItem.title) && isProject2PlaceholderTitle(incomingItem.title)) {
+    merged.title = currentItem.title;
+  }
+  return merged;
 }
 
 function mergeProject2Items(currentItems = [], incomingItems = [], deletedIds = new Set()) {

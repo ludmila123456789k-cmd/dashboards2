@@ -305,9 +305,11 @@ async function fetchProject2Html() {
   const script = readAppScriptDiskCache() || await fetchWorkingAppScript();
   const match = script.match(/const PROJECT2_HTML_BASE64 = '([^']+)'/);
   if (!match) throw new Error("Доска проектов не найдена");
-  project2HtmlCache = Buffer.from(match[1], "base64").toString("utf8").replace(
-    "</style>",
-    `.app{display:block!important;min-height:100vh!important}
+  project2HtmlCache = Buffer.from(match[1], "base64").toString("utf8")
+    .replace(/const (\w+Animation)='[A-Za-z0-9+/=]{10000,}';/g, "const $1='';")
+    .replace(
+      "</style>",
+      `.app{display:block!important;min-height:100vh!important}
 .sidebar{display:none!important}
 .content{padding:26px!important;width:100%!important;max-width:none!important;box-sizing:border-box!important}
 .board{grid-template-columns:repeat(5,minmax(0,1fr))!important;overflow-x:hidden!important;width:100%!important;box-sizing:border-box!important}
@@ -318,7 +320,7 @@ async function fetchProject2Html() {
 .card button{padding:8px 9px!important}
 html,body{overflow-x:hidden!important;background:#fff!important}
 .content{background:#fff!important}</style>`
-  );
+    );
   return project2HtmlCache;
 }
 
