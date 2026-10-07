@@ -7,21 +7,25 @@ const WORKING_APP_URL = `https://raw.githubusercontent.com/ludmila123456789k-cmd
 const EVENT_ASSET_BASE_URL = `https://raw.githubusercontent.com/ludmila123456789k-cmd/dashboards2/${WORKING_BRANCH}/public/event-assets/`;
 const APP_SCRIPT_CACHE_MS = 5 * 60 * 1000;
 const APP_SCRIPT_DISK_CACHE = path.join(process.env.DATA_DIR || __dirname, "patched-app-cache.js");
+const APP_SCRIPT_BUNDLED_CACHE = path.join(__dirname, "patched-app-cache.js");
 const originalCreateServer = http.createServer.bind(http);
 let appScriptCache = null;
 let appScriptCacheAt = 0;
 let appScriptFetchPromise = null;
 
 function readAppScriptDiskCache() {
-  try {
-    const stat = fs.statSync(APP_SCRIPT_DISK_CACHE);
-    const script = fs.readFileSync(APP_SCRIPT_DISK_CACHE, "utf8");
-    if (script) {
-      appScriptCache = script;
-      appScriptCacheAt = stat.mtimeMs || Date.now();
-      return script;
-    }
-  } catch (error) {}
+  const cachePaths = Array.from(new Set([APP_SCRIPT_DISK_CACHE, APP_SCRIPT_BUNDLED_CACHE]));
+  for (const cachePath of cachePaths) {
+    try {
+      const stat = fs.statSync(cachePath);
+      const script = fs.readFileSync(cachePath, "utf8");
+      if (script) {
+        appScriptCache = script;
+        appScriptCacheAt = stat.mtimeMs || Date.now();
+        return script;
+      }
+    } catch (error) {}
+  }
   return null;
 }
 
@@ -184,6 +188,10 @@ function patchProject2Html(source) {
   html = html.replace(
     "async function saveProject2ToServer(state,showErrors=false){try{const response=await fetch('/api/project2',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({project2:state})});if(!response.ok&&showErrors)alert('Не удалось сохранить общую доску на сервер')}catch(e){if(showErrors)alert('Не удалось сохранить общую доску на сервер')}}",
     "async function saveProject2ToServer(state,showErrors=false){try{const response=await fetch('/api/project2',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({project2:state})});if(!response.ok){if(showErrors)alert('Не удалось сохранить общую доску на сервер');return false}const payload=await response.json().catch(()=>({}));const shared=payload?.project2;if(shared&&shared.initialized){applyProject2State(shared);writeLocalProject2State(project2StateSnapshot());exportDoneTasksToEmployees();render()}return true}catch(e){if(showErrors)alert('Не удалось сохранить общую доску на сервер');return false}}"
+  );
+  html = html.replace(
+    "function saveModal(closeAfter=true){const t=currentModalTask();if(!t)return;const oldAssignee=t.assignee;persistModalTask();if(t.assignee&&t.assignee!==oldAssignee)sendTelegram(t.assignee,`Вам назначена задача #${t.number}: ${t.title}`);if(closeAfter){closeModal();render()}}",
+    "async function saveModal(closeAfter=true){const t=currentModalTask();if(!t)return;const oldAssignee=t.assignee;persistModalTask();const ok=await saveProject2ToServer(project2StateSnapshot(),true);if(!ok)return;if(t.assignee&&t.assignee!==oldAssignee)sendTelegram(t.assignee,`Вам назначена задача #${t.number}: ${t.title}`);if(closeAfter){closeModal();render()}}"
   );
   if (!html.includes("function saveProject2PeopleDraft()")) {
     html = html.replace(
