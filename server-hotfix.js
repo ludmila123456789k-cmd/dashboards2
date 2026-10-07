@@ -462,7 +462,7 @@ async function handleProject2(req, res) {
 
   if (req.method === "GET") {
     const currentProject2 = normalizeProject2Payload(store.workspace.sections.project2 || {});
-    if (project2TaskCount(currentProject2) === 0) {
+    if (project2TaskCount(currentProject2) === 0 && project2DeleteCount(currentProject2) === 0) {
       const backupProject2 = readLatestProject2Backup();
       if (backupProject2) {
         store.workspace.sections.project2 = backupProject2;
