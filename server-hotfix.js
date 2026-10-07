@@ -295,6 +295,28 @@ function removeProject2Duplicates(primaryItems = [], secondaryItems = []) {
   );
 }
 
+function project2PersonKey(person) {
+  const name = String(person?.name || "").trim().toLowerCase();
+  const telegram = String(person?.telegram || "").trim().toLowerCase();
+  return name || telegram || "";
+}
+
+function mergeProject2People(currentPeople = [], incomingPeople = [], deletedNames = new Set()) {
+  const people = new Map();
+  (Array.isArray(currentPeople) ? currentPeople : []).forEach(person => {
+    const key = project2PersonKey(person);
+    const name = String(person?.name || "");
+    if (key && !deletedNames.has(name)) people.set(key, person);
+  });
+  (Array.isArray(incomingPeople) ? incomingPeople : []).forEach(person => {
+    const key = project2PersonKey(person);
+    const name = String(person?.name || "");
+    if (!key || deletedNames.has(name)) return;
+    people.set(key, { ...(people.get(key) || {}), ...person });
+  });
+  return Array.from(people.values());
+}
+
 function project2ItemCount(state = {}) {
   return (Array.isArray(state.tasks) ? state.tasks.length : 0)
     + (Array.isArray(state.backlog) ? state.backlog.length : 0)
@@ -331,10 +353,11 @@ function mergeProject2State(currentState = {}, incomingState = {}) {
     .filter(name => !incomingPeopleNames.has(String(name || "")) && !rawIncomingPeopleNames.has(String(name || "")))
     .slice(-1000);
   const hasIncomingPeople = Array.isArray(sanitizedIncomingState?.people);
+  const deletedPersonSet = new Set(deletedPersonNames);
   const peopleSource = hasIncomingPeople
-    ? incoming.people
+    ? mergeProject2People(current.people, incoming.people, deletedPersonSet)
     : (Array.isArray(current.people)
-        ? current.people.filter(person => !deletedPersonNames.includes(String(person?.name || "")))
+        ? current.people.filter(person => !deletedPersonSet.has(String(person?.name || "")))
         : []);
   const deletedTaskIds = Array.from(new Set([...(current.deletedTaskIds || []), ...(incoming.deletedTaskIds || [])])).slice(-1000);
   const deletedBacklogIds = Array.from(new Set([...(current.deletedBacklogIds || []), ...(incoming.deletedBacklogIds || [])])).slice(-1000);
