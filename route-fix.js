@@ -1,13 +1,36 @@
 const http = require("http");
+const fs = require("fs");
+const path = require("path");
 
 const WORKING_BRANCH = "fix-report-save-symbols-20260903";
 const WORKING_APP_URL = `https://raw.githubusercontent.com/ludmila123456789k-cmd/dashboards2/${WORKING_BRANCH}/public/app.js`;
 const EVENT_ASSET_BASE_URL = `https://raw.githubusercontent.com/ludmila123456789k-cmd/dashboards2/${WORKING_BRANCH}/public/event-assets/`;
 const APP_SCRIPT_CACHE_MS = 5 * 60 * 1000;
+const APP_SCRIPT_DISK_CACHE = path.join(process.env.DATA_DIR || __dirname, "patched-app-cache.js");
 const originalCreateServer = http.createServer.bind(http);
 let appScriptCache = null;
 let appScriptCacheAt = 0;
 let appScriptFetchPromise = null;
+
+function readAppScriptDiskCache() {
+  try {
+    const stat = fs.statSync(APP_SCRIPT_DISK_CACHE);
+    const script = fs.readFileSync(APP_SCRIPT_DISK_CACHE, "utf8");
+    if (script) {
+      appScriptCache = script;
+      appScriptCacheAt = stat.mtimeMs || Date.now();
+      return script;
+    }
+  } catch (error) {}
+  return null;
+}
+
+function writeAppScriptDiskCache(script) {
+  try {
+    fs.mkdirSync(path.dirname(APP_SCRIPT_DISK_CACHE), { recursive: true });
+    fs.writeFileSync(APP_SCRIPT_DISK_CACHE, script);
+  } catch (error) {}
+}
 
 function patchOuterAppScript(source) {
   return source
@@ -136,7 +159,7 @@ function patchProject2Html(source) {
   );
   html = html.replace(
     "async function loadProject2State(){const localState=readLocalProject2State();applyProject2State(localState);try{const response=await fetch('/api/project2',{cache:'no-store'});if(!response.ok)return;const payload=await response.json();const shared=payload?.project2;if(project2HasContent(shared)){applyProject2State(shared);writeLocalProject2State(project2StateSnapshot());exportDoneTasksToEmployees();render();return}if(project2HasContent(localState)||tasks.length||backlog.length)saveProject2State(false)}catch(e){}}",
-    "async function loadProject2State(){try{const response=await fetch('/api/project2',{cache:'no-store'});if(response.ok){const payload=await response.json();const shared=payload?.project2;if(shared&&shared.initialized){applyProject2State(shared);writeLocalProject2State(project2StateSnapshot());exportDoneTasksToEmployees();render();return}}}catch(e){}const localState=readLocalProject2State();if(project2HasContent(localState)){applyProject2State(localState);exportDoneTasksToEmployees();render();}}"
+    "async function loadProject2State(){const localState=readLocalProject2State();try{const response=await fetch('/api/project2',{cache:'no-store'});if(response.ok){const payload=await response.json();const shared=payload?.project2;if(shared&&shared.initialized){const sharedItems=(Array.isArray(shared.tasks)?shared.tasks.length:0)+(Array.isArray(shared.backlog)?shared.backlog.length:0);const localItems=(Array.isArray(localState?.tasks)?localState.tasks.length:0)+(Array.isArray(localState?.backlog)?localState.backlog.length:0);if(sharedItems===0&&localItems>0){applyProject2State(localState);exportDoneTasksToEmployees();render();saveProject2State(false);return}applyProject2State(shared);writeLocalProject2State(project2StateSnapshot());exportDoneTasksToEmployees();render();return}}}catch(e){}if(project2HasContent(localState)){applyProject2State(localState);exportDoneTasksToEmployees();render();saveProject2State(false);}}"
   );
   html = html.replace(
     "function currentModalTask(){const arr=editSource==='tasks'?tasks:backlog;return arr.find(x=>x.id===editId)}function persistModalTask(){const t=currentModalTask();if(!t)return null;t.title=mTitle.value;t.status=mStatus.value;t.priority=mPriority.value;t.category=mCategory.value;t.assignee=mAssignee.value;t.start=mStart.value;t.due=mDue.value;t.description=mDesc.innerHTML;t.files=mFiles.value;t.attachments=readModalAttachments();t.comments=readModalComments();t.updatedAt=new Date().toISOString();t.createdAt=t.createdAt||t.updatedAt;persistProject2();dirty=false;return t}",
@@ -236,20 +259,28 @@ function eventAssetContentType(assetPath) {
 async function fetchWorkingAppScript() {
   const now = Date.now();
   if (appScriptCache && now - appScriptCacheAt < APP_SCRIPT_CACHE_MS) return appScriptCache;
+  const diskCache = readAppScriptDiskCache();
+  if (diskCache) {
+    if (!appScriptFetchPromise) appScriptFetchPromise = refreshWorkingAppScript().catch(() => diskCache).finally(() => { appScriptFetchPromise = null; });
+    return diskCache;
+  }
   if (appScriptFetchPromise) return appScriptFetchPromise;
-  appScriptFetchPromise = (async () => {
-    const response = await fetch(WORKING_APP_URL, { cache: "no-store" });
-    if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
-    const patched = patchAppScript(await response.text());
-    appScriptCache = patched;
-    appScriptCacheAt = Date.now();
-    return patched;
-  })();
+  appScriptFetchPromise = refreshWorkingAppScript();
   try {
     return await appScriptFetchPromise;
   } finally {
     appScriptFetchPromise = null;
   }
+}
+
+async function refreshWorkingAppScript() {
+  const response = await fetch(WORKING_APP_URL, { cache: "no-store" });
+  if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
+  const patched = patchAppScript(await response.text());
+  appScriptCache = patched;
+  appScriptCacheAt = Date.now();
+  writeAppScriptDiskCache(patched);
+  return patched;
 }
 
 async function serveEventAsset(pathname, res) {
