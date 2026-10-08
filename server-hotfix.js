@@ -113,6 +113,14 @@ function patchProject2AppScript(source) {
       "function saveProject2PeopleDraft(){const state=project2StateSnapshot();try{writeLocalProject2State(state)}catch(e){}try{exportDoneTasksToEmployees()}catch(e){}clearTimeout(project2SaveTimer);project2SaveTimer=setTimeout(()=>{fetch('/api/project2',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({project2:state})}).catch(()=>{})},500)}function persistProject2(){saveProject2State(false)}"
     );
   }
+  html = html.replace(
+    /function saveProject2PeopleDraft\(\)\{const state=project2StateSnapshot\(\);try\{writeLocalProject2State\(state\)\}catch\(e\)\{\}try\{exportDoneTasksToEmployees\(\)\}catch\(e\)\{\}clearTimeout\(project2SaveTimer\);project2SaveTimer=setTimeout\(\(\)=>\{fetch\('\/api\/project2',\{method:'PUT',headers:\{'Content-Type':'application\/json'\},body:JSON\.stringify\(\{project2:state\}\)\}\)\.catch\(\(\)=>\{\}\)\},500\)\}/,
+    "function saveProject2PeopleDraft(){const state=project2StateSnapshot();try{writeLocalProject2State(state)}catch(e){}try{exportDoneTasksToEmployees()}catch(e){}clearTimeout(project2SaveTimer);saveProject2ToServer(state,false)}"
+  );
+  html = html.replace(
+    "function saveProject2PeopleDraft(){const state=project2StateSnapshot();try{exportDoneTasksToEmployees()}catch(e){}clearTimeout(project2SaveTimer);project2SaveTimer=setTimeout(()=>{saveProject2ToServer(state,false)},500)}",
+    "function saveProject2PeopleDraft(){const state=project2StateSnapshot();try{writeLocalProject2State(state)}catch(e){}try{exportDoneTasksToEmployees()}catch(e){}clearTimeout(project2SaveTimer);saveProject2ToServer(state,false)}"
+  );
 
   html = html.replace(
     /let tasks=\[[\s\S]*?\];\s*let backlog=\[[\s\S]*?\];\s*function task/,
@@ -387,13 +395,13 @@ function project2DeleteCount(state = {}) {
 
 function mergeProject2State(currentState = {}, incomingState = {}) {
   const rawIncomingPeopleNames = new Set((Array.isArray(incomingState?.people) ? incomingState.people : [])
-    .map(person => String(person?.name || ""))
+    .map(project2PersonName)
     .filter(Boolean));
   const sanitizedIncomingState = incomingState && typeof incomingState === "object"
     ? {
         ...incomingState,
         deletedPersonNames: Array.isArray(incomingState.deletedPersonNames)
-          ? incomingState.deletedPersonNames.filter(name => !rawIncomingPeopleNames.has(String(name || "")))
+          ? incomingState.deletedPersonNames.filter(name => !rawIncomingPeopleNames.has(project2PersonName(name)))
           : incomingState.deletedPersonNames
       }
     : incomingState;
@@ -403,10 +411,10 @@ function mergeProject2State(currentState = {}, incomingState = {}) {
     return current;
   }
   const incomingPeopleNames = new Set((Array.isArray(incoming.people) ? incoming.people : [])
-    .map(person => String(person?.name || ""))
+    .map(project2PersonName)
     .filter(Boolean));
   const deletedPersonNames = Array.from(new Set([...(current.deletedPersonNames || []), ...(incoming.deletedPersonNames || [])]))
-    .filter(name => !incomingPeopleNames.has(String(name || "")) && !rawIncomingPeopleNames.has(String(name || "")))
+    .filter(name => !incomingPeopleNames.has(project2PersonName(name)) && !rawIncomingPeopleNames.has(project2PersonName(name)))
     .slice(-1000);
   const hasIncomingPeople = Array.isArray(sanitizedIncomingState?.people);
   const deletedPersonSet = new Set(deletedPersonNames.map(project2PersonName).filter(Boolean));

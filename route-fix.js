@@ -248,7 +248,11 @@ function patchProject2Html(source) {
   }
   html = html.replace(
     /function saveProject2PeopleDraft\(\)\{const state=project2StateSnapshot\(\);try\{writeLocalProject2State\(state\)\}catch\(e\)\{\}try\{exportDoneTasksToEmployees\(\)\}catch\(e\)\{\}clearTimeout\(project2SaveTimer\);project2SaveTimer=setTimeout\(\(\)=>\{fetch\('\/api\/project2',\{method:'PUT',headers:\{'Content-Type':'application\/json'\},body:JSON\.stringify\(\{project2:state\}\)\}\)\.catch\(\(\)=>\{\}\)\},500\)\}/,
-    "function saveProject2PeopleDraft(){const state=project2StateSnapshot();try{exportDoneTasksToEmployees()}catch(e){}clearTimeout(project2SaveTimer);project2SaveTimer=setTimeout(()=>{saveProject2ToServer(state,false)},500)}"
+    "function saveProject2PeopleDraft(){const state=project2StateSnapshot();try{writeLocalProject2State(state)}catch(e){}try{exportDoneTasksToEmployees()}catch(e){}clearTimeout(project2SaveTimer);saveProject2ToServer(state,false)}"
+  );
+  html = html.replace(
+    "function saveProject2PeopleDraft(){const state=project2StateSnapshot();try{exportDoneTasksToEmployees()}catch(e){}clearTimeout(project2SaveTimer);project2SaveTimer=setTimeout(()=>{saveProject2ToServer(state,false)},500)}",
+    "function saveProject2PeopleDraft(){const state=project2StateSnapshot();try{writeLocalProject2State(state)}catch(e){}try{exportDoneTasksToEmployees()}catch(e){}clearTimeout(project2SaveTimer);saveProject2ToServer(state,false)}"
   );
   html = html.replace(
     "async function refreshProject2FromServer(){if(document.getElementById('backdrop'))return;try{const response=await fetch('/api/project2',{cache:'no-store'});if(!response.ok)return;const payload=await response.json();const shared=payload?.project2;if(project2HasContent(shared)){applyProject2State(shared);writeLocalProject2State(project2StateSnapshot());exportDoneTasksToEmployees();render()}}catch(e){}}",
