@@ -477,6 +477,7 @@ function render() {
   `;
 
   bindEvents();
+  initEmployeeEventAnimations();
 }
 
 function renderMainContent(section, taskRoute) {
@@ -1592,7 +1593,90 @@ function renderEmployee(person, personIndex, day, month) {
         ${reports.map(report => renderReport(report, personIndex)).join("") || `<div class="empty">Нет задач за выбранный день</div>`}
       </div>
     </section>
+    ${renderEmployeeEvent(person, day)}
   `;
+}
+
+function renderEmployeeEvent(person, day) {
+  if (!person || !validDateValue(day)) return "";
+  const date = new Date(`${day}T00:00:00`);
+  const dayNum = date.getDate();
+  const month = date.getMonth() + 1;
+  const name = person.name || "";
+  const birthdays = [
+    { key: "zlобина-arina", names: ["Злобина Арина", "Арина Злобина"], day: 5, month: 12, text: "Арина, с днем рождения!", image: "birthday-101.webp" },
+    { key: "martyanova-polina", names: ["Мартьянова Полина", "Полина Мартьянова"], day: 18, month: 3, text: "Полина, с днем рождения!", image: "birthday-102.webp" },
+    { key: "vlasova-anastasia", names: ["Власова Анастасия", "Анастасия Власова"], day: 6, month: 12, text: "Анастасия, с днем рождения!", image: "birthday-106.webp" },
+    { key: "vasiliy-kislov", names: ["Василий Кислов", "Кислов Василий"], day: 22, month: 12, text: "Василий, с днем рождения!", image: "birthday-100.webp" },
+    { key: "kovrizhnyh-natalia", names: ["Коврижных Наталья", "Наталья Коврижных"], day: 28, month: 2, text: "Наталья, с днем рождения!", image: "birthday-104.webp" },
+    { key: "voilov-maxim", names: ["Войлов Максим", "Максим Войлов"], day: 10, month: 11, text: "Максим, с днем рождения!", image: "birthday-98.webp" },
+    { key: "maxim-malyh", names: ["Максим Малых", "Малых Максим"], day: 16, month: 11, text: "Максим, с днем рождения!", image: "birthday-106.webp" },
+    { key: "novozhilov-vladislav", names: ["Новожилов Владислав", "Владислав Новожилов", "Новожилов Влад", "Влад Новожилов"], day: 13, month: 6, text: "Влад, с днем рождения!", image: "birthday-99.webp" }
+  ];
+  const birthday = birthdays.find(item => employeeBirthdayMatches(name, item) && item.day === dayNum && item.month === month);
+  if (birthday) return renderBirthdayEvent(birthday);
+  if (month === 2 && dayNum === 23) return renderLottieEvent("feb23", "23 февраля", "feb23.json");
+  if (month === 3 && dayNum === 8) return renderLottieEvent("march8", "8 марта", "march8.json");
+  if (month === 12 && dayNum >= 25 && dayNum <= 31) return renderLottieEvent("christmas", "25-31 декабря", "christmas.json");
+  if (month === 10 && dayNum === 30) return renderLottieEvent("halloween", "30 октября", "halloween.json");
+  if (month >= 9 && month <= 11) return renderLottieEvent("autumn", "Осень", "autumn.json");
+  if (month === 12 || month <= 2) return renderLottieEvent("winter", "Зима", "winter.json");
+  if (month >= 3 && month <= 5) return renderLottieEvent("spring", "Весна", "spring.json");
+  return renderLottieEvent("summer", "Лето", "summer.json");
+}
+
+function normalizeEmployeeBirthdayName(value) {
+  return String(value || "").trim().toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ");
+}
+
+function employeeBirthdayMatches(personName, birthday) {
+  const normalizedPerson = normalizeEmployeeBirthdayName(personName);
+  return birthday.names.some(candidate => normalizeEmployeeBirthdayName(candidate) === normalizedPerson);
+}
+
+function renderBirthdayEvent(birthday) {
+  return `<aside class="employee-event employee-event-birthday"><div class="employee-event-picture"><img src="/event-assets/${escapeAttribute(birthday.image)}" alt="${escapeAttribute(birthday.text)}"><strong>${escapeHtml(birthday.text)}</strong></div></aside>`;
+}
+
+function renderLottieEvent(kind, label, fileName) {
+  return `<aside class="employee-event employee-event-${kind}"><div class="employee-lottie" data-lottie-src="/event-assets/${escapeAttribute(fileName)}" aria-label="${escapeAttribute(label)}"></div></aside>`;
+}
+
+function initEmployeeEventAnimations() {
+  const containers = Array.from(document.querySelectorAll("[data-lottie-src]"));
+  if (!containers.length) return;
+  loadLottieLibrary().then(() => {
+    containers.forEach(container => {
+      if (container.dataset.lottieLoaded === "1" || !window.lottie) return;
+      container.dataset.lottieLoaded = "1";
+      window.lottie.loadAnimation({
+        container,
+        renderer: "svg",
+        loop: true,
+        autoplay: true,
+        path: container.dataset.lottieSrc
+      });
+    });
+  }).catch(() => {
+    containers.forEach(container => {
+      if (container.dataset.lottieLoaded === "1") return;
+      container.dataset.lottieLoaded = "1";
+      container.innerHTML = `<div class="employee-lottie-fallback" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>`;
+    });
+  });
+}
+
+function loadLottieLibrary() {
+  if (window.lottie) return Promise.resolve();
+  if (window.__employeeLottiePromise) return window.__employeeLottiePromise;
+  window.__employeeLottiePromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js";
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+  return window.__employeeLottiePromise;
 }
 
 function renderEmployeeMonthlySummary(person, reports, month) {
