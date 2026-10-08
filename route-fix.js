@@ -46,8 +46,18 @@ function stripProject2StartupAutosave(html) {
   );
 }
 
+function stripProject2HeavyMedia(html) {
+  const transparentPixel = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
+  return html
+    .replace(/<script>[\s\S]*?<\/script>/g, script => {
+      if (script.includes("bodymovin") && script.includes("AnimationItem")) return "";
+      return script;
+    })
+    .replace(/data:image\\?\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, transparentPixel);
+}
+
 function patchProject2ServedHtml(html) {
-  return stripProject2StartupAutosave(html)
+  return stripProject2HeavyMedia(stripProject2StartupAutosave(html))
     .replace(/const (\w+Animation)='[A-Za-z0-9+/=]{10000,}';/g, "const $1='';")
     .replace(/(^|[^a-zA-Z])function saveModal\(closeAfter=true\)\{const t=currentModalTask\(\);if\(!t\)return;const oldAssignee=t\.assignee;persistModalTask\(\);const ok=await saveProject2ToServer/g, "$1async function saveModal(closeAfter=true){const t=currentModalTask();if(!t)return;const oldAssignee=t.assignee;persistModalTask();const ok=await saveProject2ToServer")
     .replace(/async\s+async\s+function saveModal/g, "async function saveModal")
