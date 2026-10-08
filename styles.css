@@ -1578,6 +1578,10 @@ tr:last-child td {
   min-width: 0;
 }
 
+.employee-detail-panel > .panel-title {
+  grid-column: 1 / -1;
+}
+
 .employee-detail-panel .employee-task-finder {
   grid-column: 1 / -1;
 }
