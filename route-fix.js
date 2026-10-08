@@ -267,7 +267,6 @@ function patchProject2Html(source) {
     "function addPerson(){const base='Новый исполнитель';let n=people.length+1;let name=base;const used=()=>people.some(p=>String(p?.name||'')===name)||deletedPersonNames.includes(name);while(used()){name=`${base} ${n++}`}deletedPersonNames=deletedPersonNames.filter(item=>item!==name);people.push({name,telegram:'',_draft:true,_draftId:`draft-${Date.now()}-${Math.random().toString(36).slice(2)}`,_draftIndex:people.length});saveProject2PeopleDraft();render()}function updatePerson(i,name){const person=people[i];if(!person)return;const old=person.name;person.name=name;person._draft=true;person._draftIndex=i;person._draftId=person._draftId||`draft-${Date.now()}-${Math.random().toString(36).slice(2)}`;deletedPersonNames=deletedPersonNames.filter(item=>item!==name);if(reportEmployee===old)reportEmployee=name;tasks.forEach(t=>{if(t.assignee===old){t.assignee=name;touchProject2Item(t)}});backlog.forEach(t=>{if(t.assignee===old){t.assignee=name;touchProject2Item(t)}});saveProject2PeopleDraft()}function updateTelegram(i,value){const person=people[i];if(!person)return;person.telegram=value;person._draft=true;person._draftIndex=i;person._draftId=person._draftId||`draft-${Date.now()}-${Math.random().toString(36).slice(2)}`;saveProject2PeopleDraft()}function deletePerson(i){if(confirm('Удалить пользователя навсегда?')){const old=people[i].name;deletedPersonNames=Array.from(new Set([...deletedPersonNames,old])).slice(-1000);people.splice(i,1);tasks.forEach(t=>{if(t.assignee===old){t.assignee='';touchProject2Item(t)}});backlog.forEach(t=>{if(t.assignee===old){t.assignee='';touchProject2Item(t)}});if(reportEmployee===old)reportEmployee=people[0]?.name||'';persistProject2();render()}}"
   );
 
-  html = html.replace(/const (\w+Animation)='[A-Za-z0-9+/=]{10000,}';/g, "const $1='';");
   html = stripProject2StartupAutosave(html);
   return source.replace(match[1], Buffer.from(html, "utf8").toString("base64"));
 }
@@ -323,7 +322,6 @@ async function fetchProject2Html() {
   const match = script.match(/const PROJECT2_HTML_BASE64 = '([^']+)'/);
   if (!match) throw new Error("Доска проектов не найдена");
   project2HtmlCache = stripProject2StartupAutosave(Buffer.from(match[1], "base64").toString("utf8"))
-    .replace(/const (\w+Animation)='[A-Za-z0-9+/=]{10000,}';/g, "const $1='';")
     .replace(
       "</style>",
       `.app{display:block!important;min-height:100vh!important}
