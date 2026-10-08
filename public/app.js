@@ -729,10 +729,17 @@ function resizeProject2Frame(frame) {
     try {
       const doc = frame.contentDocument || frame.contentWindow?.document;
       if (!doc) return;
-      doc.documentElement.style.overflow = "hidden";
-      doc.body.style.overflow = "hidden";
+      doc.documentElement.style.overflowX = "hidden";
+      doc.documentElement.style.overflowY = "visible";
+      doc.body.style.overflowX = "hidden";
+      doc.body.style.overflowY = "visible";
+      const contentBottom = Array.from(doc.body.querySelectorAll("body *")).reduce((max, element) => {
+        const rect = element.getBoundingClientRect();
+        return Math.max(max, rect.bottom);
+      }, 0);
       const height = Math.max(
         780,
+        Math.ceil(contentBottom + 32),
         doc.documentElement.scrollHeight || 0,
         doc.body.scrollHeight || 0,
         doc.documentElement.offsetHeight || 0,
