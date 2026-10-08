@@ -325,6 +325,7 @@ function patchLocalOuterAppScript(source) {
     .replace(/\{ id: "board", label: "Доска проектов", icon: "board" \}/g, '{ id: "project2", label: "Доска проектов", icon: "board" }')
     .replace(/activeSection === "board"/g, 'activeSection === "project2"')
     .replace(/section\.id === "board"/g, 'section.id === "project2"')
+    .replace(/<div class="content \$\{activeSection === "employees" \? "employees-content" : ""\}">/g, '<div class="content ${activeSection === "employees" ? "employees-content" : ""} ${activeSection === "project2" ? "project2-content" : ""}">')
     .replace(/\$\{!isPublicView && activeSection === "project2" \? renderBoardCategorySidebar\(\) : ""\}/g, "")
     .replace(/\$\{section\.id === "project2" \? renderBoardToolbar\(\) : ""\}/g, "")
     .replace(/if \(sectionId === "settings"\) return "";/g, 'if (sectionId === "settings" || sectionId === "project2") return "";')

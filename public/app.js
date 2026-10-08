@@ -469,7 +469,7 @@ function render() {
           </div>
         </header>
 
-        <div class="content ${activeSection === "employees" ? "employees-content" : ""}">
+        <div class="content ${activeSection === "employees" ? "employees-content" : ""} ${activeSection === "project2" ? "project2-content" : ""}">
           ${isPublicView ? renderViewBanner() : ""}
           ${renderMainContent(section, taskRoute)}
         </div>

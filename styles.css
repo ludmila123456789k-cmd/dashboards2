@@ -430,6 +430,13 @@ textarea {
   padding: 28px;
 }
 
+.content.project2-content {
+  margin: 0;
+  max-width: none;
+  padding: 28px 32px 28px 28px;
+  width: 100%;
+}
+
 .content.employees-content {
   max-width: none;
 }
