@@ -2327,9 +2327,12 @@ function renderSettings() {
             <article class="backup-item">
               <div>
                 <div class="backup-date">${escapeHtml(formatDateTime(backup.createdAt))}</div>
-                <div class="backup-meta">${escapeHtml(backupReasonLabel(backup.reason))} · данные от ${escapeHtml(formatDateTime(backup.workspaceUpdatedAt))}</div>
+                <div class="backup-meta">${escapeHtml(backupReasonLabel(backup.reason))} · ${escapeHtml(backupScopeLabel(backup.scope))} · данные от ${escapeHtml(formatDateTime(backup.workspaceUpdatedAt))}</div>
               </div>
-              <button class="button small" type="button" data-action="restore-backup" data-backup-id="${escapeAttribute(backup.id)}">${icon("reset")} Восстановить</button>
+              <div class="backup-actions">
+                <button class="button small" type="button" data-action="restore-backup" data-backup-id="${escapeAttribute(backup.id)}">${icon("reset")} Восстановить</button>
+                <button class="button small danger" type="button" data-action="delete-backup" data-backup-id="${escapeAttribute(backup.id)}">${icon("trash")} Удалить</button>
+              </div>
             </article>
           `).join("") || `<div class="empty">Создайте первую резервную копию</div>`}
         </div>
@@ -2573,6 +2576,7 @@ async function handleAction(button) {
   if (action === "choose-backup-file") return app.querySelector('[data-change="import-backup-file"]')?.click();
   if (action === "refresh-backups") return loadBackups(true);
   if (action === "restore-backup") return restoreBackup(button.dataset.backupId);
+  if (action === "delete-backup") return deleteBackup(button.dataset.backupId);
   if (action === "select-employee") {
     activeEmployeeId = button.dataset.employeeId || "";
     saveActiveEmployeeId(activeEmployeeId);
@@ -3635,6 +3639,9 @@ async function createBackup() {
     const backup = {
       id: new Date().toISOString().replace(/[:]/g, "-"),
       createdAt: new Date().toISOString(),
+      app: "konglomerat",
+      version: "20260902-06",
+      scope: "full-site",
       reason: "manual",
       workspaceUpdatedAt: workspace.updatedAt,
       workspace: clone(workspace)
@@ -3665,7 +3672,8 @@ async function downloadWorkspaceBackup() {
   const createdAt = new Date().toISOString();
   const backup = {
     app: "konglomerat",
-    version: "20260902-05",
+    version: "20260902-06",
+    scope: "full-site",
     createdAt,
     workspaceUpdatedAt: workspace.updatedAt,
     workspace: clone(workspace)
@@ -3751,6 +3759,36 @@ async function restoreBackup(backupId) {
     render();
   } catch (error) {
     showToast("Не удалось восстановить копию");
+  }
+}
+
+async function deleteBackup(backupId) {
+  if (!backupId) return;
+  if (!confirm("Удалить эту резервную копию? После удаления восстановить ее будет нельзя.")) return;
+
+  if (!canUseServer) {
+    const storedBackups = JSON.parse(localStorage.getItem("marketing-system-backups") || "[]");
+    const nextBackups = storedBackups.filter(item => item.id !== backupId);
+    localStorage.setItem("marketing-system-backups", JSON.stringify(nextBackups));
+    backups = nextBackups.map(({ workspace: _workspace, ...summary }) => summary);
+    showToast("Резервная копия удалена");
+    render();
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/backups/${encodeURIComponent(backupId)}`, { method: "DELETE" });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      showToast(payload.error || "Не удалось удалить резервную копию");
+      return;
+    }
+
+    backups = Array.isArray(payload.backups) ? payload.backups : backups.filter(backup => backup.id !== backupId);
+    showToast("Резервная копия удалена");
+    render();
+  } catch (error) {
+    showToast("Не удалось удалить резервную копию");
   }
 }
 
@@ -4265,6 +4303,10 @@ function backupReasonLabel(reason) {
     "before-restore": "перед восстановлением"
   };
   return labels[reason] || "резервная копия";
+}
+
+function backupScopeLabel(scope) {
+  return scope === "full-site" ? "весь сайт" : "данные сайта";
 }
 
 function bestEmployee(people) {

@@ -629,6 +629,13 @@ textarea {
   padding: 12px;
 }
 
+.backup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .backup-date {
   font-weight: 800;
 }

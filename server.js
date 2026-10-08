@@ -675,17 +675,19 @@ function backupIdFromDate(date = new Date()) {
 }
 
 function backupFilePath(id) {
-  if (!/^[0-9TZ.\-]+$/.test(String(id || ""))) return "";
+  if (!/^[a-zA-Z0-9TZ._-]+$/.test(String(id || ""))) return "";
   const filePath = path.join(BACKUP_DIR, `${id}.json`);
   return filePath.startsWith(BACKUP_DIR) ? filePath : "";
 }
 
-function backupSummary(backup) {
+function backupSummary(backup, fallbackId = "", fallbackTime = 0) {
+  const createdAt = backup.createdAt || (fallbackTime ? new Date(fallbackTime).toISOString() : undefined);
   return {
-    id: backup.id,
-    createdAt: backup.createdAt,
-    reason: backup.reason || "manual",
-    workspaceUpdatedAt: backup.workspace?.updatedAt || backup.createdAt
+    id: backup.id || fallbackId,
+    createdAt,
+    scope: backup.scope || "full-site",
+    reason: backup.reason || (String(fallbackId).includes("before") ? "auto" : "manual"),
+    workspaceUpdatedAt: backup.workspace?.updatedAt || createdAt
   };
 }
 
@@ -696,8 +698,10 @@ function listBackups() {
     .filter(file => file.endsWith(".json"))
     .map(file => {
       try {
-        const backup = JSON.parse(fs.readFileSync(path.join(BACKUP_DIR, file), "utf8"));
-        return backupSummary(backup);
+        const filePath = path.join(BACKUP_DIR, file);
+        const backup = JSON.parse(fs.readFileSync(filePath, "utf8"));
+        const stat = fs.statSync(filePath);
+        return backupSummary(backup, path.basename(file, ".json"), stat.mtimeMs);
       } catch (error) {
         return null;
       }
@@ -720,8 +724,11 @@ function createBackup(store, reason = "manual") {
   const backup = {
     id: backupIdFromDate(new Date(createdAt)),
     createdAt,
+    app: "konglomerat",
+    version: "20260902-06",
+    scope: "full-site",
     reason,
-    workspace: store.workspace
+    workspace: cloneJson(store.workspace)
   };
 
   fs.writeFileSync(backupFilePath(backup.id), JSON.stringify(backup, null, 2), "utf8");
@@ -1012,7 +1019,21 @@ async function handleApi(req, res, pathname) {
     return;
   }
 
-  const restoreBackupMatch = pathname.match(/^\/api\/backups\/([0-9TZ.\-]+)\/restore$/);
+  const deleteBackupMatch = pathname.match(/^\/api\/backups\/([a-zA-Z0-9TZ._-]+)$/);
+  if (req.method === "DELETE" && deleteBackupMatch) {
+    if (!requireEditor(req, res)) return;
+    const filePath = backupFilePath(deleteBackupMatch[1]);
+    if (!filePath || !fs.existsSync(filePath)) {
+      sendJson(res, 404, { error: "Резервная копия не найдена" });
+      return;
+    }
+
+    fs.unlinkSync(filePath);
+    sendJson(res, 200, { ok: true, backups: listBackups() });
+    return;
+  }
+
+  const restoreBackupMatch = pathname.match(/^\/api\/backups\/([a-zA-Z0-9TZ._-]+)\/restore$/);
   if (req.method === "POST" && restoreBackupMatch) {
     if (!requireEditor(req, res)) return;
     const backup = readBackup(restoreBackupMatch[1]);
@@ -1029,7 +1050,7 @@ async function handleApi(req, res, pathname) {
     sendJson(res, 200, {
       workspace: store.workspace,
       backups: listBackups(),
-      restoredFrom: backupSummary(backup),
+      restoredFrom: backupSummary(backup, restoreBackupMatch[1]),
       shareUrl: publicUrl(req, store.publicToken),
       editorUrl: editorUrl(req),
       publicBaseUrl: PUBLIC_BASE_URL,

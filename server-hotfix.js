@@ -645,7 +645,19 @@ function ensureDailyBackup() {
   if (!fs.existsSync(STORE_FILE)) return;
   fs.mkdirSync(BACKUP_DIR, { recursive: true });
   const backupFile = path.join(BACKUP_DIR, `${now().slice(0, 10)}-before-report-save.json`);
-  if (!fs.existsSync(backupFile)) fs.copyFileSync(STORE_FILE, backupFile);
+  if (!fs.existsSync(backupFile)) {
+    const store = readStore();
+    const createdAt = now();
+    fs.writeFileSync(backupFile, JSON.stringify({
+      id: path.basename(backupFile, ".json"),
+      app: "konglomerat",
+      version: "20260902-06",
+      scope: "full-site",
+      createdAt,
+      reason: "auto",
+      workspace: store?.workspace || { sections: {} }
+    }, null, 2), "utf8");
+  }
   cleanupBackups();
 }
 
