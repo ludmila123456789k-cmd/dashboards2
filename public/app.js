@@ -717,10 +717,36 @@ function renderContent() {
 
 function renderProject2Embed() {
   return `
-    <section class="project2-embed" style="margin:0;padding:0;width:100%;height:calc(100vh - 100px);min-height:780px;overflow:visible">
-      <iframe class="project2-frame" title="Доска проектов" src="/project2.html?v=server-truth-20261008" style="display:block;width:100%;height:100%;min-height:780px;border:0;background:#fff"></iframe>
+    <section class="project2-embed" style="margin:0;padding:0;width:100%;overflow:visible">
+      <iframe class="project2-frame" title="Доска проектов" src="/project2.html?v=server-truth-20261008" scrolling="no" onload="resizeProject2Frame(this)" style="display:block;width:100%;height:900px;min-height:780px;border:0;background:#fff;overflow:hidden"></iframe>
     </section>
   `;
+}
+
+function resizeProject2Frame(frame) {
+  if (!frame) return;
+  const resize = () => {
+    try {
+      const doc = frame.contentDocument || frame.contentWindow?.document;
+      if (!doc) return;
+      doc.documentElement.style.overflow = "hidden";
+      doc.body.style.overflow = "hidden";
+      const height = Math.max(
+        780,
+        doc.documentElement.scrollHeight || 0,
+        doc.body.scrollHeight || 0,
+        doc.documentElement.offsetHeight || 0,
+        doc.body.offsetHeight || 0
+      );
+      frame.style.height = `${height}px`;
+    } catch (error) {
+      // If the frame is not readable, keep the fallback height.
+    }
+  };
+  resize();
+  setTimeout(resize, 100);
+  setTimeout(resize, 500);
+  setTimeout(resize, 1200);
 }
 
 function renderBoard() {
