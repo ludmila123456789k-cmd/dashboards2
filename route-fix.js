@@ -381,6 +381,12 @@ async function serveEventAsset(pathname, res) {
     res.end("Bad asset path");
     return;
   }
+  const localAssetPath = path.join(__dirname, "public", "event-assets", assetName);
+  if (fs.existsSync(localAssetPath) && fs.statSync(localAssetPath).isFile()) {
+    res.writeHead(200, { "Content-Type": eventAssetContentType(assetName), "Cache-Control": "public, max-age=300" });
+    res.end(fs.readFileSync(localAssetPath));
+    return;
+  }
   const response = await fetch(EVENT_ASSET_BASE_URL + encodeURIComponent(assetName).replace(/%20/g, "%20"), { cache: "no-store" });
   if (!response.ok) {
     res.writeHead(response.status, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
