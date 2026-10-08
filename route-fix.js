@@ -307,7 +307,7 @@ function patchAppScript(source) {
 }
 
 function patchLocalOuterAppScript(source) {
-  return patchEmployeeEvents(source
+  let result = source
     .replace(/\{ id: "board", label: "Доска проектов", icon: "board" \}/g, '{ id: "project2", label: "Доска проектов", icon: "board" }')
     .replace(/activeSection === "board"/g, 'activeSection === "project2"')
     .replace(/section\.id === "board"/g, 'section.id === "project2"')
@@ -315,10 +315,13 @@ function patchLocalOuterAppScript(source) {
     .replace(/\$\{section\.id === "project2" \? renderBoardToolbar\(\) : ""\}/g, "")
     .replace(/if \(sectionId === "settings"\) return "";/g, 'if (sectionId === "settings" || sectionId === "project2") return "";')
     .replace(/if \(sectionId === "board"\) return renderBoard\(\);/, 'if (sectionId === "project2") return renderProject2Embed();\n  if (sectionId === "board") return renderBoard();')
-    .replace(/function renderBoard\(\) \{/, 'function renderProject2Embed() {\n  return `<section class="project2-embed" style="margin:0;padding:0;width:100%;height:calc(100vh - 100px);min-height:780px;overflow:visible"><iframe class="project2-frame" title="Доска проектов" src="/project2.html?v=server-truth-20261007" style="display:block;width:100%;height:100%;min-height:780px;border:0;background:#f6f8fb"></iframe></section>`;\n}\n\nfunction renderBoard() {')
     .replace(/const fromUrl = readViewStateParam\("section"\);\n    if \(SECTIONS\.some\(item => item\.id === fromUrl\)\) return fromUrl;/, 'const fromUrl = readViewStateParam("section");\n    if (fromUrl === "board") return "project2";\n    if (SECTIONS.some(item => item.id === fromUrl)) return fromUrl;')
     .replace(/return SECTIONS\.some\(item => item\.id === stored\) \? stored : "roadmap";/, 'return stored === "board" ? "project2" : SECTIONS.some(item => item.id === stored) ? stored : "roadmap";')
-  );
+  ;
+  if (!result.includes("function renderProject2Embed()")) {
+    result = result.replace(/function renderBoard\(\) \{/, 'function renderProject2Embed() {\n  return `<section class="project2-embed" style="margin:0;padding:0;width:100%;height:calc(100vh - 100px);min-height:780px;overflow:visible"><iframe class="project2-frame" title="Доска проектов" src="/project2.html?v=server-truth-20261008" style="display:block;width:100%;height:100%;min-height:780px;border:0;background:#fff"></iframe></section>`;\n}\n\nfunction renderBoard() {');
+  }
+  return patchEmployeeEvents(result);
 }
 
 function sendContent(req, res, body, contentType, cacheControl = "private, max-age=60") {

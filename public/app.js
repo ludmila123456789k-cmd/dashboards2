@@ -1,7 +1,7 @@
 const SECTIONS = [
   { id: "roadmap", label: "Marketing Roadmap", icon: "map" },
   { id: "content", label: "Контент-календарь", icon: "calendar" },
-  { id: "board", label: "Доска проектов", icon: "board" },
+  { id: "project2", label: "Доска проектов", icon: "board" },
   { id: "employees", label: "Отчеты сотрудников", icon: "users" },
   { id: "settings", label: "Настройки", icon: "settings" }
 ];
@@ -562,7 +562,7 @@ function renderSection(section) {
     <section>
       ${renderSectionActions(section.id)}
       ${section.id === "board" ? renderBoardToolbar() : ""}
-      ${section.id === "employees" || section.id === "board" ? "" : renderStats(section.id)}
+      ${section.id === "employees" || section.id === "board" || section.id === "project2" ? "" : renderStats(section.id)}
       ${renderSectionBody(section.id)}
     </section>
   `;
@@ -618,6 +618,7 @@ function renderStats(sectionId) {
 function renderSectionBody(sectionId) {
   if (sectionId === "roadmap") return renderRoadmap();
   if (sectionId === "content") return renderContent();
+  if (sectionId === "project2") return renderProject2Embed();
   if (sectionId === "board") return renderBoard();
   if (sectionId === "improvements") return renderImprovements();
   if (sectionId === "employees") return renderEmployees();
@@ -627,7 +628,7 @@ function renderSectionBody(sectionId) {
 
 function renderSectionActions(sectionId) {
   if (isPublicView) return "";
-  if (sectionId === "settings") return "";
+  if (sectionId === "settings" || sectionId === "project2") return "";
 
   if (sectionId === "employees") {
     const people = workspace.sections.employees.people || [];
@@ -711,6 +712,14 @@ function renderContent() {
         </article>
       `).join("")}
     </div>
+  `;
+}
+
+function renderProject2Embed() {
+  return `
+    <section class="project2-embed" style="margin:0;padding:0;width:100%;height:calc(100vh - 100px);min-height:780px;overflow:visible">
+      <iframe class="project2-frame" title="Доска проектов" src="/project2.html?v=server-truth-20261008" style="display:block;width:100%;height:100%;min-height:780px;border:0;background:#fff"></iframe>
+    </section>
   `;
 }
 
@@ -4541,8 +4550,10 @@ function writeViewStateToUrl() {
 function readStoredActiveSection() {
   try {
     const fromUrl = readViewStateParam("section");
+    if (fromUrl === "board" && SECTIONS.some(item => item.id === "project2")) return "project2";
     if (SECTIONS.some(item => item.id === fromUrl)) return fromUrl;
     const stored = localStorage.getItem(ACTIVE_SECTION_KEY);
+    if (stored === "board" && SECTIONS.some(item => item.id === "project2")) return "project2";
     return SECTIONS.some(item => item.id === stored) ? stored : "roadmap";
   } catch (error) {
     return "roadmap";
@@ -4551,6 +4562,7 @@ function readStoredActiveSection() {
 
 function saveActiveSection(sectionId) {
   try {
+    if (sectionId === "board" && SECTIONS.some(item => item.id === "project2")) sectionId = "project2";
     if (SECTIONS.some(item => item.id === sectionId)) {
       localStorage.setItem(ACTIVE_SECTION_KEY, sectionId);
     }
