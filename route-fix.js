@@ -49,7 +49,20 @@ function stripProject2StartupAutosave(html) {
 function patchProject2ServedHtml(html) {
   return stripProject2StartupAutosave(html)
     .replace(/const (\w+Animation)='[A-Za-z0-9+/=]{10000,}';/g, "const $1='';")
-    .replace(/(?<!async\s)function saveModal\(closeAfter=true\)\{const t=currentModalTask\(\);if\(!t\)return;const oldAssignee=t\.assignee;persistModalTask\(\);const ok=await saveProject2ToServer/g, "async function saveModal(closeAfter=true){const t=currentModalTask();if(!t)return;const oldAssignee=t.assignee;persistModalTask();const ok=await saveProject2ToServer");
+    .replace(/(^|[^a-zA-Z])function saveModal\(closeAfter=true\)\{const t=currentModalTask\(\);if\(!t\)return;const oldAssignee=t\.assignee;persistModalTask\(\);const ok=await saveProject2ToServer/g, "$1async function saveModal(closeAfter=true){const t=currentModalTask();if(!t)return;const oldAssignee=t.assignee;persistModalTask();const ok=await saveProject2ToServer")
+    .replace(/async\s+async\s+function saveModal/g, "async function saveModal")
+    .replace(
+      "let project2SaveTimer=null;",
+      "let project2SaveTimer=null;let project2SaveInFlight=false;"
+    )
+    .replace(
+      "async function saveProject2ToServer(state,showErrors=false){try{const response=await fetch('/api/project2',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({project2:state})});if(!response.ok){if(showErrors)alert('Не удалось сохранить общую доску на сервер');return false}const payload=await response.json().catch(()=>({}));const shared=payload?.project2;if(shared&&shared.initialized){applyProject2State(shared);exportDoneTasksToEmployees();render()}return true}catch(e){if(showErrors)alert('Не удалось сохранить общую доску на сервер');return false}}",
+      "async function saveProject2ToServer(state,showErrors=false){project2SaveInFlight=true;try{const response=await fetch('/api/project2',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({project2:state})});if(!response.ok){if(showErrors)alert('Не удалось сохранить общую доску на сервер');return false}const payload=await response.json().catch(()=>({}));const shared=payload?.project2;if(shared&&shared.initialized){applyProject2State(shared);exportDoneTasksToEmployees();render()}return true}catch(e){if(showErrors)alert('Не удалось сохранить общую доску на сервер');return false}finally{project2SaveInFlight=false}}"
+    )
+    .replace(
+      "async function refreshProject2FromServer(){if(document.getElementById('backdrop')||project2InputHasFocus())return;",
+      "async function refreshProject2FromServer(){if(project2SaveInFlight||document.getElementById('backdrop')||project2InputHasFocus())return;"
+    );
 }
 
 function patchOuterAppScript(source) {
