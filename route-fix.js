@@ -56,6 +56,10 @@ function patchProject2ServedHtml(html) {
       "let project2SaveTimer=null;let project2SaveInFlight=false;"
     )
     .replace(
+      /let project2SaveTimer=null;(?:let project2SaveInFlight=false;)+/g,
+      "let project2SaveTimer=null;let project2SaveInFlight=false;"
+    )
+    .replace(
       "async function saveProject2ToServer(state,showErrors=false){try{const response=await fetch('/api/project2',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({project2:state})});if(!response.ok){if(showErrors)alert('Не удалось сохранить общую доску на сервер');return false}const payload=await response.json().catch(()=>({}));const shared=payload?.project2;if(shared&&shared.initialized){applyProject2State(shared);exportDoneTasksToEmployees();render()}return true}catch(e){if(showErrors)alert('Не удалось сохранить общую доску на сервер');return false}}",
       "async function saveProject2ToServer(state,showErrors=false){project2SaveInFlight=true;try{const response=await fetch('/api/project2',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({project2:state})});if(!response.ok){if(showErrors)alert('Не удалось сохранить общую доску на сервер');return false}const payload=await response.json().catch(()=>({}));const shared=payload?.project2;if(shared&&shared.initialized){applyProject2State(shared);exportDoneTasksToEmployees();render()}return true}catch(e){if(showErrors)alert('Не удалось сохранить общую доску на сервер');return false}finally{project2SaveInFlight=false}}"
     )
