@@ -77,7 +77,7 @@ function patchEmployeeEvents(source) {
   );
   result = result.replace(
     /function renderBirthdayEvent\(birthday, day, type\) \{[\s\S]*?\n\}/,
-    'function renderBirthdayEvent(birthday, day, type) {\n  return `<aside class="employee-event employee-event-birthday">${employeeEventCloseButton(day, type)}<div class="employee-event-picture"><img src="/event-assets/${escapeAttribute(birthday.image)}" alt="${escapeAttribute(birthday.text)}"><strong>${escapeHtml(birthday.text)}</strong></div></aside>`;\n}'
+    'function renderBirthdayEvent(birthday, day, type) {\n  return `<aside class="employee-event employee-event-birthday">${employeeEventCloseButton(day, type)}<div class="employee-event-picture"><img src="/event-assets/${escapeAttribute(birthday.image)}" alt="${escapeAttribute(birthday.text)}" width="260" height="240" loading="eager" decoding="async" fetchpriority="high"><strong>${escapeHtml(birthday.text)}</strong></div></aside>`;\n}'
   );
   result = result.replace(
     /function renderLottieEvent\(kind, label, day, fileName\) \{[\s\S]*?\n\}/,

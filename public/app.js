@@ -430,6 +430,7 @@ function render() {
   if (taskRoute) activeSection = "employees";
   const section = SECTIONS.find(item => item.id === activeSection) || SECTIONS[0];
   activeSection = section.id;
+  preloadEmployeeBirthdayImages();
 
   app.innerHTML = `
     <div class="shell">
@@ -1635,7 +1636,7 @@ function employeeBirthdayMatches(personName, birthday) {
 }
 
 function renderBirthdayEvent(birthday) {
-  return `<aside class="employee-event employee-event-birthday"><div class="employee-event-picture"><img src="/event-assets/${escapeAttribute(birthday.image)}" alt="${escapeAttribute(birthday.text)}"><strong>${escapeHtml(birthday.text)}</strong></div></aside>`;
+  return `<aside class="employee-event employee-event-birthday"><div class="employee-event-picture"><img src="/event-assets/${escapeAttribute(birthday.image)}" alt="${escapeAttribute(birthday.text)}" width="260" height="240" loading="eager" decoding="async" fetchpriority="high"><strong>${escapeHtml(birthday.text)}</strong></div></aside>`;
 }
 
 function renderLottieEvent(kind, label, fileName) {
@@ -1677,6 +1678,32 @@ function loadLottieLibrary() {
     document.head.appendChild(script);
   });
   return window.__employeeLottiePromise;
+}
+
+function preloadEmployeeBirthdayImages() {
+  if (window.__employeeBirthdayImagesPreloaded) return;
+  window.__employeeBirthdayImagesPreloaded = true;
+  [
+    "birthday-98.webp",
+    "birthday-99.webp",
+    "birthday-100.webp",
+    "birthday-101.webp",
+    "birthday-102.webp",
+    "birthday-103.webp",
+    "birthday-104.webp",
+    "birthday-105.webp",
+    "birthday-106.webp"
+  ].forEach(fileName => {
+    const href = `/event-assets/${fileName}`;
+    const link = document.createElement("link");
+    link.rel = "prefetch";
+    link.as = "image";
+    link.href = href;
+    document.head.appendChild(link);
+    const image = new Image();
+    image.decoding = "async";
+    image.src = href;
+  });
 }
 
 function renderEmployeeMonthlySummary(person, reports, month) {
