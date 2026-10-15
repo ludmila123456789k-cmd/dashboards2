@@ -725,7 +725,6 @@ function renderProject2Embed() {
 
 function resizeProject2Frame(frame) {
   if (!frame) return;
-  frame._project2ResizeObserver?.disconnect?.();
   const resize = () => {
     try {
       const doc = frame.contentDocument || frame.contentWindow?.document;
@@ -734,17 +733,13 @@ function resizeProject2Frame(frame) {
       doc.documentElement.style.overflowY = "visible";
       doc.body.style.overflowX = "hidden";
       doc.body.style.overflowY = "visible";
-      const contentBottom = Array.from(doc.body.querySelectorAll("body *")).reduce((max, element) => {
+      const contentBottom = Array.from(doc.querySelectorAll(".content > *")).reduce((max, element) => {
         const rect = element.getBoundingClientRect();
         return Math.max(max, rect.bottom);
       }, 0);
       const height = Math.max(
         780,
-        Math.ceil(contentBottom + 32),
-        doc.documentElement.scrollHeight || 0,
-        doc.body.scrollHeight || 0,
-        doc.documentElement.offsetHeight || 0,
-        doc.body.offsetHeight || 0
+        Math.ceil(contentBottom + 32)
       );
       frame.style.height = `${height}px`;
     } catch (error) {
@@ -755,16 +750,31 @@ function resizeProject2Frame(frame) {
   setTimeout(resize, 100);
   setTimeout(resize, 500);
   setTimeout(resize, 1200);
+}
 
+window.addEventListener("message", event => {
+  if (event.data?.type !== "project2-content-resize") return;
+  const frame = document.querySelector(".project2-frame");
+  if (frame?.contentWindow !== event.source) return;
+  positionProject2Modal(frame);
+  resizeProject2Frame(frame);
+});
+
+function positionProject2Modal(frame) {
   try {
     const doc = frame.contentDocument || frame.contentWindow?.document;
-    if (!doc || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(resize);
-    observer.observe(doc.documentElement);
-    observer.observe(doc.body);
-    frame._project2ResizeObserver = observer;
+    const backdrop = doc?.getElementById("backdrop");
+    const modal = doc?.getElementById("modal");
+    if (!backdrop || !modal) return;
+
+    const frameTop = frame.getBoundingClientRect().top + window.scrollY;
+    const top = Math.max(16, window.scrollY - frameTop + 16);
+    backdrop.style.position = "absolute";
+    backdrop.style.alignItems = "flex-start";
+    backdrop.style.padding = `${top}px 16px 24px`;
+    modal.style.maxHeight = `${Math.max(320, window.innerHeight - 48)}px`;
   } catch (error) {
-    // Keep the initial height when the embedded page cannot be observed.
+    // The board remains usable if the embedded document is temporarily unavailable.
   }
 }
 

@@ -389,7 +389,8 @@ async function fetchProject2Html() {
 .card button{padding:8px 9px!important}
 html,body{overflow-x:hidden!important;background:#fff!important}
 .content{background:#fff!important}</style>`
-    );
+    )
+    .replace("</body>", `<script>(function(){const notify=()=>{if(window.parent!==window)window.parent.postMessage({type:"project2-content-resize"},window.location.origin)};new MutationObserver(()=>requestAnimationFrame(notify)).observe(document.documentElement,{childList:true,subtree:true});window.addEventListener("load",notify);})();</script></body>`);
   return project2HtmlCache;
 }
 
