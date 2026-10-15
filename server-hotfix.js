@@ -470,16 +470,6 @@ async function handleProject2(req, res) {
 
   if (req.method === "GET") {
     const currentProject2 = normalizeProject2Payload(store.workspace.sections.project2 || {});
-    if (project2TaskCount(currentProject2) === 0 && project2DeleteCount(currentProject2) === 0) {
-      const backupProject2 = readLatestProject2Backup();
-      if (backupProject2) {
-        store.workspace.sections.project2 = backupProject2;
-        store.workspace.updatedAt = now();
-        writeStore(store);
-        sendJson(res, 200, { project2: backupProject2, restoredFromBackup: true });
-        return;
-      }
-    }
     sendJson(res, 200, { project2: currentProject2 });
     return;
   }
@@ -490,21 +480,9 @@ async function handleProject2(req, res) {
       ensureDailyBackup();
       const currentProject2 = normalizeProject2Payload(store.workspace.sections.project2 || {});
       const incomingProject2 = normalizeProject2Payload(payload.project2 || payload);
-      const emptyIncomingWithoutDeletes = project2TaskCount(incomingProject2) === 0
-        && project2DeleteCount(incomingProject2) === 0;
-      if (project2TaskCount(currentProject2) === 0 && emptyIncomingWithoutDeletes) {
-        const backupProject2 = readLatestProject2Backup();
-        if (backupProject2) {
-          store.workspace.sections.project2 = backupProject2;
-          store.workspace.updatedAt = now();
-          writeStore(store);
-          sendJson(res, 200, { project2: backupProject2, updatedAt: store.workspace.updatedAt, restoredFromBackup: true });
-          return;
-        }
-      }
-      store.workspace.sections.project2 = project2TaskCount(currentProject2) > 0 && emptyIncomingWithoutDeletes
-        ? currentProject2
-        : incomingProject2;
+      // A stale browser must not replace the whole board with its older snapshot.
+      // Deletions are represented explicitly in the deleted* fields and are merged below.
+      store.workspace.sections.project2 = mergeProject2State(currentProject2, incomingProject2);
       store.workspace.updatedAt = now();
       writeStore(store);
       sendJson(res, 200, { project2: store.workspace.sections.project2, updatedAt: store.workspace.updatedAt });
