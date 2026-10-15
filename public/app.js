@@ -725,6 +725,7 @@ function renderProject2Embed() {
 
 function resizeProject2Frame(frame) {
   if (!frame) return;
+  frame._project2ResizeObserver?.disconnect?.();
   const resize = () => {
     try {
       const doc = frame.contentDocument || frame.contentWindow?.document;
@@ -754,6 +755,17 @@ function resizeProject2Frame(frame) {
   setTimeout(resize, 100);
   setTimeout(resize, 500);
   setTimeout(resize, 1200);
+
+  try {
+    const doc = frame.contentDocument || frame.contentWindow?.document;
+    if (!doc || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(resize);
+    observer.observe(doc.documentElement);
+    observer.observe(doc.body);
+    frame._project2ResizeObserver = observer;
+  } catch (error) {
+    // Keep the initial height when the embedded page cannot be observed.
+  }
 }
 
 function renderBoard() {
